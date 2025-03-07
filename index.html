@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>SimpleNote</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <button id="new-folder-btn">Create new folder</button>
+        <button id="new-file-btn">Create new file</button>
+      </div>
+      <div id="folder-tree" class="folder-tree"></div>
+      <div id="trash-container" class="trash-container">
+        <div class="trash-icon">🗑️</div>
+        <div class="trash-label">Drag here to delete</div>
+      </div>
+    </div>
+    <div class="editor-container">
+      <div class="editor-header">
+        <span id="current-file-path"></span>
+        <button id="save-btn">Save</button>
+      </div>
+      <textarea id="editor" placeholder="Start typing..."></textarea>
+    </div>
+  </div>
+
+  <!-- Custom Modal Dialog for creating folder/file -->
+  <div id="modal-overlay" class="modal-overlay">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 id="modal-title">Enter name</h3>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="modal-input" placeholder="Name">
+      </div>
+      <div class="modal-footer">
+        <button id="modal-cancel-btn">Cancel</button>
+        <button id="modal-confirm-btn">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
