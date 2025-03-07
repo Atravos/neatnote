@@ -8,13 +8,23 @@
 <body>
   <div class="app-container">
     <div class="sidebar">
+      <div class="app-title">
+        <h1>SimpleNote</h1>
+        <div id="settings-icon" class="settings-icon" title="Settings">
+          <!-- SVG will be inserted by JavaScript -->
+        </div>
+      </div>
       <div class="sidebar-header">
-        <button id="new-folder-btn">Create new folder</button>
-        <button id="new-file-btn">Create new file</button>
+        <button id="new-folder-btn">
+          <span class="btn-icon">+</span> New Folder
+        </button>
+        <button id="new-file-btn">
+          <span class="btn-icon">+</span> New File
+        </button>
       </div>
       <div id="folder-tree" class="folder-tree"></div>
       <div id="trash-container" class="trash-container">
-        <div class="trash-icon">🗑️</div>
+        <div class="trash-icon"></div>
         <div class="trash-label">Drag here to delete</div>
       </div>
     </div>
@@ -39,6 +49,53 @@
       <div class="modal-footer">
         <button id="modal-cancel-btn">Cancel</button>
         <button id="modal-confirm-btn">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal Dialog -->
+  <div id="settings-overlay" class="modal-overlay">
+    <div class="modal-container settings-container">
+      <div class="modal-header">
+        <h3>Settings</h3>
+      </div>
+      <div class="modal-body">
+        <div class="settings-section">
+          <h4>Theme</h4>
+          <div class="theme-options">
+            <div class="theme-option theme-light selected" data-theme="light">
+              <div class="theme-preview">
+                <div class="theme-preview-sidebar"></div>
+                <div class="theme-preview-content"></div>
+              </div>
+              <div class="theme-label">Light</div>
+            </div>
+            <div class="theme-option theme-dark" data-theme="dark">
+              <div class="theme-preview">
+                <div class="theme-preview-sidebar"></div>
+                <div class="theme-preview-content"></div>
+              </div>
+              <div class="theme-label">Dark</div>
+            </div>
+            <div class="theme-option theme-blue" data-theme="blue">
+              <div class="theme-preview">
+                <div class="theme-preview-sidebar"></div>
+                <div class="theme-preview-content"></div>
+              </div>
+              <div class="theme-label">Blue</div>
+            </div>
+            <div class="theme-option theme-sepia" data-theme="sepia">
+              <div class="theme-preview">
+                <div class="theme-preview-sidebar"></div>
+                <div class="theme-preview-content"></div>
+              </div>
+              <div class="theme-label">Sepia</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="settings-close-btn">Close</button>
       </div>
     </div>
   </div>

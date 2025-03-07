@@ -1,4 +1,14 @@
-* {
+/* CSS Variables for themes */
+:root {
+    --bg-color: #ffffff;
+    --sidebar-bg: #fafafa;
+    --text-color: #3c4043;
+    --border-color: #eeeeee;
+    --hover-color: #f5f5f5;
+    --accent-color: #1a73e8;
+  }
+  
+  * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
@@ -8,6 +18,9 @@
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     height: 100vh;
     overflow: hidden;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
   
   .app-container {
@@ -15,58 +28,305 @@
     height: 100vh;
   }
   
-  .sidebar {
-    width: 250px;
+  /* App title */
+  .app-title {
+    padding: 16px 12px 8px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .app-title h1 {
+    font-size: 18px;
+    color: var(--text-color);
+    font-weight: 500;
+    margin: 0;
+  }
+  
+  /* Settings icon - more visible */
+  .settings-icon {
+    width: 28px;
+    height: 28px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s;
     background-color: #f5f5f5;
-    border-right: 1px solid #ddd;
+    margin-left: 12px;
+  }
+  
+  .settings-icon svg {
+    width: 22px;
+    height: 22px;
+    fill: #5f6368;
+  }
+  
+  .settings-icon:hover {
+    background-color: #e8eaed;
+    transform: rotate(30deg);
+  }
+  
+  .settings-icon:hover svg {
+    fill: var(--accent-color);
+  }
+  
+  /* Settings modal */
+  .settings-container {
+    max-width: 400px;
+  }
+  
+  .settings-section {
+    margin-bottom: 16px;
+  }
+  
+  .settings-section h4 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    color: #5f6368;
+  }
+  
+  .theme-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  
+  .theme-option {
+    width: 80px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .theme-option.selected {
+    border-color: #1a73e8;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  .theme-preview {
+    height: 60px;
+    display: flex;
+  }
+  
+  .theme-preview-sidebar {
+    width: 30%;
+  }
+  
+  .theme-preview-content {
+    width: 70%;
+  }
+  
+  .theme-label {
+    padding: 6px 0;
+    text-align: center;
+    font-size: 12px;
+  }
+  
+  /* Theme colors */
+  .theme-light .theme-preview-sidebar {
+    background-color: #fafafa;
+  }
+  .theme-light .theme-preview-content {
+    background-color: #ffffff;
+  }
+  
+  .theme-dark .theme-preview-sidebar {
+    background-color: #202124;
+  }
+  .theme-dark .theme-preview-content {
+    background-color: #292a2d;
+  }
+  
+  .theme-blue .theme-preview-sidebar {
+    background-color: #e8f0fe;
+  }
+  .theme-blue .theme-preview-content {
+    background-color: #f8fbff;
+  }
+  
+  .theme-sepia .theme-preview-sidebar {
+    background-color: #f4ecd8;
+  }
+  .theme-sepia .theme-preview-content {
+    background-color: #fbf8f2;
+  }
+  
+  /* Sidebar styling */
+  .sidebar {
+    width: 260px;
+    background-color: var(--sidebar-bg);
+    border-right: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    transition: background-color 0.3s ease;
   }
   
   .sidebar-header {
-    padding: 10px;
-    border-bottom: 1px solid #ddd;
+    padding: 12px;
+    border-bottom: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
     gap: 8px;
   }
   
   .sidebar-header button {
-    padding: 6px 10px;
-    background-color: #fff;
-    border: 1px solid #ccc;
-    border-radius: 4px;
+    padding: 8px 12px;
+    background-color: var(--hover-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
     cursor: pointer;
-    font-size: 12px;
+    font-size: 13px;
+    transition: all 0.2s;
+    color: var(--text-color);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
   }
   
   .sidebar-header button:hover {
-    background-color: #f0f0f0;
+    background-color: var(--hover-color);
+    transform: translateY(-1px);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   }
   
+  .btn-icon {
+    font-size: 14px;
+    font-weight: bold;
+  }
+  
+  /* Update editor buttons too */
+  #save-btn {
+    padding: 6px 14px;
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+  }
+  
+  #save-btn:hover {
+    background-color: var(--accent-color);
+    opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Update folder tree container */
   .folder-tree {
     flex: 1;
     overflow-y: auto;
-    padding: 10px;
+    padding: 12px;
+    background-color: var(--sidebar-bg);
   }
   
+  /* Modern folder and file styling */
   .folder, .file {
-    margin: 2px 0;
-    padding: 4px 8px;
+    margin: 4px 0;
+    padding: 6px 8px;
     cursor: pointer;
-    border-radius: 4px;
-    transition: background-color 0.1s;
+    border-radius: 6px;
+    transition: background-color 0.2s, transform 0.1s;
     display: flex;
     align-items: center;
+    font-size: 13px;
   }
   
   .folder:hover, .file:hover {
-    background-color: #e5e5e5;
+    background-color: var(--hover-color);
+    transform: translateX(2px);
+  }
+  
+  .folder.selected {
+    background-color: var(--hover-color);
+    border-left: 3px solid var(--accent-color);
+  }
+  
+  /* Toggle button for folders */
+  .folder-toggle {
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+    margin-right: 4px;
+    color: #666;
+    font-size: 10px;
+    transition: transform 0.2s;
+  }
+  
+  .folder-toggle::before {
+    content: "▶";
+    display: block;
+    transition: transform 0.2s;
+  }
+  
+  .folder-open .folder-toggle::before {
+    transform: rotate(90deg);
+  }
+  
+  /* Modern folder icon */
+  .folder-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    margin-right: 6px;
+    color: #5f6368;
+  }
+  
+  .folder-icon svg {
+    width: 18px;
+    height: 18px;
+    fill: #5f6368;
+  }
+  
+  .folder.selected .folder-icon svg {
+    fill: var(--accent-color);
+  }
+  
+  .folder-open .folder-icon svg {
+    fill: var(--accent-color);
+  }
+  
+  /* Modern file icon */
+  .file-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    margin-right: 6px;
+    margin-left: 20px; /* Indentation to align with folders */
+    color: #5f6368;
+  }
+  
+  .file-icon svg {
+    width: 16px;
+    height: 16px;
+    fill: #5f6368;
+  }
+  
+  .file:hover .file-icon svg {
+    fill: #455a64;
   }
   
   .folder-name, .file-name {
-    margin-left: 5px;
+    margin-left: 0;
+    font-weight: 400;
+    color: var(--text-color);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -74,8 +334,21 @@
   
   .folder-content {
     margin-left: 15px;
+    position: relative;
   }
   
+  .folder-content::before {
+    content: "";
+    position: absolute;
+    left: -8px;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background-color: var(--border-color);
+    opacity: 0.8;
+  }
+  
+  /* Editor section */
   .editor-container {
     flex: 1;
     display: flex;
@@ -83,54 +356,97 @@
     overflow: hidden;
   }
   
+  /* Improve editor appearance */
+  #editor {
+    flex: 1;
+    width: 100%;
+    border: none;
+    outline: none;
+    padding: 16px;
+    font-size: 14px;
+    resize: none;
+    font-family: 'Courier New', Courier, monospace;
+    line-height: 1.5;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+  }
+  
   .editor-header {
-    padding: 10px;
-    background-color: #f5f5f5;
-    border-bottom: 1px solid #ddd;
+    padding: 12px 16px;
+    background-color: var(--hover-color);
+    border-bottom: 1px solid var(--border-color);
     display: flex;
     justify-content: space-between;
     align-items: center;
   }
   
   #current-file-path {
-    font-size: 12px;
-    color: #666;
+    font-size: 13px;
+    color: var(--text-color);
   }
   
-  #save-btn {
-    padding: 4px 12px;
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 4px;
+  /* Modern Trash icon styling */
+  .trash-container {
+    padding: 14px 10px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background-color: var(--sidebar-bg);
     cursor: pointer;
+    transition: all 0.2s;
   }
   
-  #save-btn:hover {
-    background-color: #45a049;
+  .trash-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    color: #5f6368;
   }
   
-  #editor {
-    flex: 1;
-    width: 100%;
-    border: none;
-    outline: none;
-    padding: 10px;
-    font-size: 14px;
-    resize: none;
-    font-family: 'Courier New', Courier, monospace;
+  .trash-icon svg {
+    width: 20px;
+    height: 20px;
+    fill: #5f6368;
   }
   
-  .folder-icon::before {
-    content: "📁";
+  .trash-label {
+    font-size: 12px;
+    color: var(--text-color);
   }
   
-  .folder-open::before {
-    content: "📂";
+  /* Trash hover effect */
+  .trash-container:hover {
+    background-color: #feeae6;
   }
   
-  .file-icon::before {
-    content: "📄";
+  .trash-container:hover .trash-icon svg {
+    fill: #e53935;
+  }
+  
+  /* Active drop target */
+  .trash-container.drag-over {
+    background-color: #ffebee;
+    border: 2px dashed #e53935;
+  }
+  
+  /* Animation for trash when item is dragged over */
+  .trash-container.drag-over .trash-icon {
+    transform: scale(1.2);
+    transition: transform 0.2s;
+  }
+  
+  .trash-container.drag-over .trash-icon svg {
+    fill: #e53935;
+  }
+  
+  /* Confirmation effect */
+  .trash-container.confirm {
+    background-color: #ffcdd2;
   }
   
   /* Drag and drop styling */
@@ -142,11 +458,9 @@
   .dragging {
     opacity: 0.5;
   }
-
-  /* Add these styles to the bottom of your existing styles.css file */
-
-/* Modal Dialog */
-.modal-overlay {
+  
+  /* Modal Dialog */
+  .modal-overlay {
     display: none;
     position: fixed;
     top: 0;
@@ -160,110 +474,74 @@
   }
   
   .modal-container {
-    background-color: white;
-    border-radius: 5px;
-    width: 300px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    background-color: var(--bg-color);
+    border-radius: 8px;
+    width: 320px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   }
   
   .modal-header {
-    padding: 10px 15px;
-    border-bottom: 1px solid #eee;
+    padding: 16px;
+    border-bottom: 1px solid var(--border-color);
   }
   
   .modal-header h3 {
     margin: 0;
     font-size: 16px;
+    color: var(--text-color);
   }
   
   .modal-body {
-    padding: 15px;
+    padding: 16px;
   }
   
   .modal-body input {
     width: 100%;
-    padding: 8px;
-    border: 1px solid #ddd;
+    padding: 10px;
+    border: 1px solid var(--border-color);
     border-radius: 4px;
     font-size: 14px;
+    background-color: var(--bg-color);
+    color: var(--text-color);
   }
   
   .modal-footer {
-    padding: 10px 15px;
-    border-top: 1px solid #eee;
+    padding: 12px 16px;
+    border-top: 1px solid var(--border-color);
     text-align: right;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
   }
   
   .modal-footer button {
-    padding: 6px 12px;
-    margin-left: 5px;
+    padding: 8px 16px;
     border-radius: 4px;
     cursor: pointer;
+    font-size: 13px;
   }
   
   #modal-cancel-btn {
-    background-color: #f0f0f0;
-    border: 1px solid #ddd;
+    background-color: var(--hover-color);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
   }
   
-  #modal-confirm-btn {
-    background-color: #4CAF50;
+  #modal-cancel-btn:hover {
+    background-color: var(--hover-color);
+  }
+  
+  #modal-confirm-btn, #settings-close-btn {
+    background-color: var(--accent-color);
     color: white;
     border: none;
+  }
+  
+  #modal-confirm-btn:hover, #settings-close-btn:hover {
+    opacity: 0.9;
   }
   
   /* Make modal visible */
   .modal-overlay.show {
     display: flex;
-  }
-
-  .folder.selected {
-    background-color: #e0f2f1;
-    font-weight: bold;
-  }
-
-  /* Trash icon styling */
-.trash-container {
-    padding: 15px 10px;
-    border-top: 1px solid #ddd;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-    background-color: #f5f5f5;
-    cursor: pointer;
-    transition: background-color 0.2s;
-  }
-  
-  .trash-icon {
-    font-size: 24px;
-    color: #666;
-  }
-  
-  .trash-label {
-    font-size: 12px;
-    color: #666;
-  }
-  
-  /* Trash hover effect */
-  .trash-container:hover {
-    background-color: #ffe6e6;
-  }
-  
-  /* Active drop target */
-  .trash-container.drag-over {
-    background-color: #ffcccc;
-    border: 2px dashed #ff6666;
-  }
-  
-  /* Animation for trash when item is dragged over */
-  .trash-container.drag-over .trash-icon {
-    transform: scale(1.2);
-    transition: transform 0.2s;
-  }
-  
-  /* Confirmation effect */
-  .trash-container.confirm {
-    background-color: #ff9999;
   }
