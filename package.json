@@ -1,5 +1,5 @@
 {
-  "name": "simplenote",
+  "name": "neatnote",
   "version": "1.0.0",
   "description": "A lightweight note-taking application",
   "main": "main.js",
@@ -7,7 +7,8 @@
     "start": "electron .",
     "build": "electron-builder",
     "build:mac": "electron-builder --mac",
-    "build:win": "electron-builder --win"
+    "build:win": "electron-builder --win",
+    "build:linux": "electron-builder --linux"
   },
   "author": "",
   "license": "MIT",
@@ -16,13 +17,16 @@
     "electron-builder": "^24.6.3"
   },
   "build": {
-    "appId": "com.example.simplenote",
-    "productName": "SimpleNote",
+    "appId": "com.example.neatnote",
+    "productName": "NeatNote",
     "mac": {
       "category": "public.app-category.productivity"
     },
     "win": {
       "target": "nsis"
+    },
+    "linux": {
+      "target": ["AppImage", "deb"]
     }
   },
   "dependencies": {
