@@ -22,7 +22,7 @@ function createWindow() {
   mainWindow.loadFile('index.html');
   
   // Enable DevTools to see errors
-  mainWindow.webContents.openDevTools();
+  //mainWindow.webContents.openDevTools();
 }
 
 app.whenReady().then(() => {
