@@ -1,3 +1,13 @@
+// Debounce utility function for delaying execution
+function debounce(func, wait) {
+  let timeout;
+  return function(...args) {
+    const context = this;
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(context, args), wait);
+  };
+}
+
 // SVG templates for icons
 const folderSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>`;
 const folderOpenSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/></svg>`;
@@ -78,9 +88,109 @@ document.addEventListener('DOMContentLoaded', () => {
     saveBtn.onclick = saveCurrentFile;
   }
   
+  // Editor setup with auto-save functionality
   if (editor) {
+    // Create a container for the auto-save indicator with dot
+    const autoSaveContainer = document.createElement('div');
+    autoSaveContainer.id = 'auto-save-container';
+    autoSaveContainer.style.display = 'flex';
+    autoSaveContainer.style.alignItems = 'center';
+    autoSaveContainer.style.marginRight = '10px';
+    autoSaveContainer.style.opacity = '0';
+    autoSaveContainer.style.transition = 'opacity 0.5s';
+    
+    // Create the status dot
+    const statusDot = document.createElement('span');
+    statusDot.id = 'status-dot';
+    statusDot.style.width = '8px';
+    statusDot.style.height = '8px';
+    statusDot.style.borderRadius = '50%';
+    statusDot.style.backgroundColor = '#4CAF50'; // Green for saved
+    statusDot.style.marginRight = '6px';
+    statusDot.style.transition = 'background-color 0.3s, box-shadow 0.3s';
+    
+    // Create the text indicator
+    const autoSaveIndicator = document.createElement('span');
+    autoSaveIndicator.id = 'auto-save-indicator';
+    autoSaveIndicator.textContent = 'Saved';
+    autoSaveIndicator.style.fontSize = '12px';
+    autoSaveIndicator.style.color = '#5f6368';
+    
+    // Add the elements to the container
+    autoSaveContainer.appendChild(statusDot);
+    autoSaveContainer.appendChild(autoSaveIndicator);
+    
+    // Insert the container before the save button in the header
+    const editorHeader = document.querySelector('.editor-header');
+    if (editorHeader) {
+      editorHeader.insertBefore(autoSaveContainer, saveBtn);
+    }
+    
+    // Debounced auto-save function (will wait 1000ms after typing stops)
+    const autoSave = debounce(async () => {
+      if (activeFile && isEditorDirty) {
+        try {
+          const content = editor.value;
+          console.log('Auto-saving to:', activeFile);
+          
+          // Show saving indicator
+          autoSaveIndicator.textContent = 'Saving...';
+          autoSaveContainer.style.opacity = '1';
+          statusDot.style.backgroundColor = '#FF9800'; // Orange for saving
+          statusDot.style.boxShadow = '0 0 5px #FF9800';
+          // Add a subtle pulse animation
+          statusDot.style.animation = 'pulse 1s infinite';
+          
+          // Add the keyframes for the pulse animation if it doesn't exist
+          if (!document.getElementById('pulse-animation')) {
+            const styleSheet = document.createElement('style');
+            styleSheet.id = 'pulse-animation';
+            styleSheet.textContent = `
+              @keyframes pulse {
+                0% { transform: scale(1); }
+                50% { transform: scale(1.2); }
+                100% { transform: scale(1); }
+              }
+            `;
+            document.head.appendChild(styleSheet);
+          }
+          
+          const result = await window.api.saveFile(activeFile, content);
+          
+          if (result.success) {
+            isEditorDirty = false;
+            autoSaveIndicator.textContent = 'Saved';
+            statusDot.style.backgroundColor = '#4CAF50'; // Green for saved
+            statusDot.style.boxShadow = '0 0 5px #4CAF50';
+            statusDot.style.animation = 'none'; // Stop pulsing
+            
+            // Fade out the indicator after a brief delay
+            setTimeout(() => {
+              autoSaveContainer.style.opacity = '0';
+            }, 1500);
+            
+            console.log('File auto-saved successfully');
+          } else {
+            autoSaveIndicator.textContent = 'Save failed';
+            statusDot.style.backgroundColor = '#F44336'; // Red for error
+            statusDot.style.boxShadow = '0 0 5px #F44336';
+            statusDot.style.animation = 'none'; // Stop pulsing
+            console.error('Failed to auto-save file:', result.error);
+          }
+        } catch (error) {
+          autoSaveIndicator.textContent = 'Save failed';
+          statusDot.style.backgroundColor = '#F44336'; // Red for error
+          statusDot.style.boxShadow = '0 0 5px #F44336';
+          statusDot.style.animation = 'none'; // Stop pulsing
+          console.error('Error in auto-save:', error);
+        }
+      }
+    }, 1000); // 1 second delay before saving
+    
+    // Add input event with auto-save
     editor.addEventListener('input', () => {
       isEditorDirty = true;
+      autoSave();
     });
   }
   
@@ -147,6 +257,9 @@ document.addEventListener('DOMContentLoaded', () => {
       
       if (result.success) {
         renderFileTree(result.files, folderTree);
+        
+        // Set up the root folder tree as a drop target
+        setupRootDropTarget(folderTree);
       } else {
         console.error('Failed to load file structure:', result.error);
       }
@@ -468,6 +581,82 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     } catch (error) {
       console.error('Error in setupDropTarget:', error);
+    }
+  }
+  
+  // Set up the root folder tree as a drop target
+  function setupRootDropTarget(folderTreeElement) {
+    try {
+      console.log('Setting up root folder tree as drop target');
+      
+      folderTreeElement.addEventListener('dragover', (e) => {
+        // Only handle the event if not over a child folder or file element
+        // This prevents conflicts with other drop targets
+        if (e.target === folderTreeElement) {
+          e.preventDefault();
+          folderTreeElement.classList.add('drag-over');
+        }
+      });
+      
+      folderTreeElement.addEventListener('dragleave', (e) => {
+        // Only handle the event if leaving the folder tree itself
+        if (e.target === folderTreeElement) {
+          folderTreeElement.classList.remove('drag-over');
+        }
+      });
+      
+      folderTreeElement.addEventListener('drop', async (e) => {
+        // Only handle the drop if it's directly on the folder tree container
+        // and not on a child element
+        if (e.target === folderTreeElement) {
+          e.preventDefault();
+          folderTreeElement.classList.remove('drag-over');
+          
+          const sourceFilePath = e.dataTransfer.getData('text/plain');
+          
+          if (!sourceFilePath) {
+            console.log('No source path in drop data');
+            return;
+          }
+          
+          console.log('Item dropped on root folder tree:', sourceFilePath);
+          
+          try {
+            // Get the root notes path from the API
+            const rootList = await window.api.listFiles();
+            if (!rootList.success) {
+              console.error('Failed to get root directory info');
+              return;
+            }
+            
+            // We need to extract the root directory path
+            // Use the API's listFiles with null to get the root path
+            // Then use moveFile to move the source file to that path
+            const result = await window.api.moveFile(sourceFilePath, null);
+            
+            if (result.success) {
+              console.log('Item moved to root successfully');
+              
+              // Update active file path if the moved file was open
+              if (activeFile === sourceFilePath) {
+                activeFile = result.newPath;
+                currentFilePath.textContent = result.newPath;
+              }
+              
+              // Refresh the file structure
+              loadFileStructure();
+            } else {
+              console.error('Failed to move item to root:', result.error);
+            }
+          } catch (error) {
+            console.error('Error moving item to root:', error);
+          }
+        }
+      });
+      
+      console.log('Root folder tree set up as drop target');
+    } catch (error) {
+      console.error('Error in setupRootDropTarget:', error);
     }
   }
   

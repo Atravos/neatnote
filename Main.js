@@ -160,7 +160,20 @@ ipcMain.handle('move-file', async (event, sourcePath, targetDir) => {
   
   try {
     const fileName = path.basename(sourcePath);
-    const targetPath = path.join(targetDir, fileName);
+    let targetPath;
+    
+    // If targetDir is null, move to the root notes directory
+    if (targetDir === null) {
+      const rootNotesDir = path.join(app.getPath('userData'), 'notes');
+      // Ensure root directory exists
+      if (!fs.existsSync(rootNotesDir)) {
+        fs.mkdirSync(rootNotesDir, { recursive: true });
+      }
+      targetPath = path.join(rootNotesDir, fileName);
+    } else {
+      targetPath = path.join(targetDir, fileName);
+    }
+    
     console.log('Moving file from', sourcePath, 'to', targetPath);
     
     fs.renameSync(sourcePath, targetPath);
