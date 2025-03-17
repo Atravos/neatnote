@@ -2,7 +2,7 @@
   "name": "neatnote",
   "version": "1.0.0",
   "description": "A lightweight note-taking application",
-  "main": "main.js",
+  "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
     "build": "electron-builder",
@@ -19,6 +19,11 @@
   "build": {
     "appId": "com.example.neatnote",
     "productName": "NeatNote",
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "index.html"
+    ],
     "mac": {
       "category": "public.app-category.productivity"
     },

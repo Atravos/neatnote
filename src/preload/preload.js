@@ -2,8 +2,16 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 console.log('Preload script executing');
 
-// Add explicit error handling to help with debugging
+/**
+ * API methods to expose to the renderer process
+ */
 const apiMethods = {
+  /**
+   * Create a new folder
+   * @param {string} name - Folder name
+   * @param {string} parentPath - Path to parent folder or null for root
+   * @returns {Promise<Object>} Result with success flag and path or error
+   */
   createFolder: async (name, parentPath) => {
     try {
       console.log('Renderer: Creating folder:', name, 'in', parentPath);
@@ -15,6 +23,13 @@ const apiMethods = {
       return { success: false, error: error.message };
     }
   },
+  
+  /**
+   * Create a new file
+   * @param {string} name - File name
+   * @param {string} parentPath - Path to parent folder or null for root
+   * @returns {Promise<Object>} Result with success flag and path or error
+   */
   createFile: async (name, parentPath) => {
     try {
       console.log('Renderer: Creating file:', name, 'in', parentPath);
@@ -26,6 +41,12 @@ const apiMethods = {
       return { success: false, error: error.message };
     }
   },
+  
+  /**
+   * Read file content
+   * @param {string} path - Path to the file
+   * @returns {Promise<Object>} Result with success flag and content or error
+   */
   readFile: async (path) => {
     try {
       console.log('Renderer: Reading file:', path);
@@ -37,6 +58,13 @@ const apiMethods = {
       return { success: false, error: error.message };
     }
   },
+  
+  /**
+   * Save content to a file
+   * @param {string} path - Path to the file
+   * @param {string} content - Content to save
+   * @returns {Promise<Object>} Result with success flag or error
+   */
   saveFile: async (path, content) => {
     try {
       console.log('Renderer: Saving file:', path);
@@ -48,6 +76,12 @@ const apiMethods = {
       return { success: false, error: error.message };
     }
   },
+  
+  /**
+   * List files in a directory
+   * @param {string} dirPath - Path to directory or null for root
+   * @returns {Promise<Object>} Result with success flag and files array or error
+   */
   listFiles: async (dirPath) => {
     try {
       console.log('Renderer: Listing files in:', dirPath);
@@ -59,6 +93,13 @@ const apiMethods = {
       return { success: false, error: error.message };
     }
   },
+  
+  /**
+   * Move a file from one location to another
+   * @param {string} sourcePath - Source file path
+   * @param {string} targetDir - Target directory path or null for root
+   * @returns {Promise<Object>} Result with success flag and new path or error
+   */
   moveFile: async (sourcePath, targetDir) => {
     try {
       console.log('Renderer: Moving file from', sourcePath, 'to', targetDir);
@@ -70,7 +111,12 @@ const apiMethods = {
       return { success: false, error: error.message };
     }
   },
-  // Add delete method
+  
+  /**
+   * Delete a file or folder
+   * @param {string} path - Path to the item to delete
+   * @returns {Promise<Object>} Result with success flag or error
+   */
   deleteItem: async (path) => {
     try {
       console.log('Renderer: Deleting item at path:', path);
@@ -84,7 +130,7 @@ const apiMethods = {
   }
 };
 
-// Expose our API to the renderer process
+// Expose API to the renderer process
 try {
   contextBridge.exposeInMainWorld('api', apiMethods);
   console.log('API exposed successfully to renderer process');

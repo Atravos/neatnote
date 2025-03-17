@@ -1,0 +1,9 @@
+/* Light theme variables */
+.app-theme-light {
+    --bg-color: #ffffff;
+    --sidebar-bg: #fafafa;
+    --text-color: #3c4043;
+    --border-color: #eeeeee;
+    --hover-color: #f5f5f5;
+    --accent-color: #1a73e8;
+  }

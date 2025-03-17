@@ -1,0 +1,245 @@
+/* Sidebar styling */
+.sidebar {
+    width: 260px;
+    background-color: var(--sidebar-bg);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: background-color 0.3s ease;
+  }
+  
+  .sidebar-header {
+    padding: 12px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .sidebar-header button {
+    padding: 8px 12px;
+    background-color: var(--hover-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+    color: var(--text-color);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  
+  .sidebar-header button:hover {
+    background-color: var(--hover-color);
+    transform: translateY(-1px);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  }
+  
+  .btn-icon {
+    font-size: 14px;
+    font-weight: bold;
+  }
+  
+  /* Folder tree container */
+  .folder-tree {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    background-color: var(--sidebar-bg);
+  }
+  
+  /* Modern folder and file styling */
+  .folder, .file {
+    margin: 4px 0;
+    padding: 6px 8px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background-color 0.2s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    font-size: 13px;
+  }
+  
+  .folder:hover, .file:hover {
+    background-color: var(--hover-color);
+    transform: translateX(2px);
+  }
+  
+  .folder.selected {
+    background-color: var(--hover-color);
+    border-left: 3px solid var(--accent-color);
+  }
+  
+  /* Toggle button for folders */
+  .folder-toggle {
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+    margin-right: 4px;
+    color: #666;
+    font-size: 10px;
+    transition: transform 0.2s;
+  }
+  
+  .folder-toggle::before {
+    content: "▶";
+    display: block;
+    transition: transform 0.2s;
+  }
+  
+  .folder-open .folder-toggle::before {
+    transform: rotate(90deg);
+  }
+  
+  /* Modern folder icon */
+  .folder-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    margin-right: 6px;
+    color: #5f6368;
+  }
+  
+  .folder-icon svg {
+    width: 18px;
+    height: 18px;
+    fill: #5f6368;
+  }
+  
+  .folder.selected .folder-icon svg {
+    fill: var(--accent-color);
+  }
+  
+  .folder-open .folder-icon svg {
+    fill: var(--accent-color);
+  }
+  
+  /* Modern file icon */
+  .file-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    margin-right: 6px;
+    margin-left: 20px; /* Indentation to align with folders */
+    color: #5f6368;
+  }
+  
+  .file-icon svg {
+    width: 16px;
+    height: 16px;
+    fill: #5f6368;
+  }
+  
+  .file:hover .file-icon svg {
+    fill: #455a64;
+  }
+  
+  .folder-name, .file-name {
+    margin-left: 0;
+    font-weight: 400;
+    color: var(--text-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .folder-content {
+    margin-left: 15px;
+    position: relative;
+  }
+  
+  .folder-content::before {
+    content: "";
+    position: absolute;
+    left: -8px;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background-color: var(--border-color);
+    opacity: 0.8;
+  }
+  
+  /* Modern Trash icon styling */
+  .trash-container {
+    padding: 14px 10px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background-color: var(--sidebar-bg);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .trash-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    color: #5f6368;
+  }
+  
+  .trash-icon svg {
+    width: 20px;
+    height: 20px;
+    fill: #5f6368;
+  }
+  
+  .trash-label {
+    font-size: 12px;
+    color: var(--text-color);
+  }
+  
+  /* Trash hover effect */
+  .trash-container:hover {
+    background-color: #feeae6;
+  }
+  
+  .trash-container:hover .trash-icon svg {
+    fill: #e53935;
+  }
+  
+  /* Active drop target */
+  .trash-container.drag-over {
+    background-color: #ffebee;
+    border: 2px dashed #e53935;
+  }
+  
+  /* Animation for trash when item is dragged over */
+  .trash-container.drag-over .trash-icon {
+    transform: scale(1.2);
+    transition: transform 0.2s;
+  }
+  
+  .trash-container.drag-over .trash-icon svg {
+    fill: #e53935;
+  }
+  
+  /* Confirmation effect */
+  .trash-container.confirm {
+    background-color: #ffcdd2;
+  }
+  
+  /* Drag and drop styling */
+  .drag-over {
+    background-color: #e0f7fa;
+    border: 2px dashed #00bcd4;
+  }
+  
+  .dragging {
+    opacity: 0.5;
+  }

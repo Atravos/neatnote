@@ -1,0 +1,9 @@
+/* Sepia theme variables */
+.app-theme-sepia {
+    --bg-color: #fbf8f2;
+    --sidebar-bg: #f4ecd8;
+    --text-color: #5f4b32;
+    --border-color: #e6d7b8;
+    --hover-color: #efe4cf;
+    --accent-color: #a3681a;
+  }

@@ -1,0 +1,9 @@
+/* Dark theme variables */
+.app-theme-dark {
+    --bg-color: #202124;
+    --sidebar-bg: #292a2d;
+    --text-color: #e8eaed;
+    --border-color: #5f6368;
+    --hover-color: #3c4043;
+    --accent-color: #8ab4f8;
+  }
