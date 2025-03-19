@@ -1,6 +1,6 @@
 {
   "name": "neatnote",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A lightweight note-taking application",
   "main": "src/main/main.js",
   "scripts": {
