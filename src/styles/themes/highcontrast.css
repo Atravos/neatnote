@@ -1,0 +1,9 @@
+/* High Contrast theme variables */
+.app-theme-highcontrast {
+    --bg-color: #ffffff;
+    --sidebar-bg: #000000;
+    --text-color: #000000;
+    --border-color: #000000;
+    --hover-color: #e0e0e0;
+    --accent-color: #0000ff;
+  }

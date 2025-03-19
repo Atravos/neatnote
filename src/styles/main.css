@@ -4,6 +4,17 @@
 @import 'editor.css';
 @import 'modals.css';
 @import 'themes/light.css';
+@import 'themes/dark.css';
+@import 'themes/blue.css';
+@import 'themes/sepia.css';
+@import 'themes/forest.css';
+@import 'themes/purple.css';
+@import 'themes/ocean.css';
+@import 'themes/autumn.css';
+@import 'themes/terminal.css';
+@import 'themes/monochrome.css';
+@import 'themes/highcontrast.css';
+@import 'themes/pastel.css';
 
 /* Base styles for the entire application */
 * {

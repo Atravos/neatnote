@@ -1,0 +1,9 @@
+/* Forest theme variables */
+.app-theme-forest {
+    --bg-color: #f5f9f0;
+    --sidebar-bg: #e8f2e2;
+    --text-color: #2c3e2d;
+    --border-color: #c5d6ba;
+    --hover-color: #dae9d1;
+    --accent-color: #4a7c59;
+  }

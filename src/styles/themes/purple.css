@@ -1,0 +1,9 @@
+/* Purple theme variables */
+.app-theme-purple {
+    --bg-color: #f8f7fc;
+    --sidebar-bg: #eee9fa;
+    --text-color: #483d6b;
+    --border-color: #d8cff5;
+    --hover-color: #e4ddf8;
+    --accent-color: #6a4c93;
+  }

@@ -1,0 +1,9 @@
+/* Pastel theme variables */
+.app-theme-pastel {
+    --bg-color: #fef9fd;
+    --sidebar-bg: #f9ecf7;
+    --text-color: #7a5980;
+    --border-color: #f3d9ee;
+    --hover-color: #f7e3f5;
+    --accent-color: #c490bf;
+  }
