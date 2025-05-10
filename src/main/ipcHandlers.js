@@ -1,11 +1,26 @@
 const { ipcMain } = require('electron');
 const fileSystem = require('./fileSystem');
+const processManager = require('./processManager');
 
 /**
  * Set up all IPC handlers for file system operations
  * @param {Electron.App} app - Electron app instance
+ * @returns {Object} Object with cleanup function
  */
 function setupIpcHandlers(app) {
+  console.log('Setting up IPC handlers');
+  
+  // Track active handlers for cleanup
+  const handlers = [
+    'create-folder',
+    'create-file',
+    'read-file',
+    'save-file',
+    'list-files',
+    'move-file',
+    'delete-item'
+  ];
+  
   // Handler for creating folders
   ipcMain.handle('create-folder', async (event, name, parentPath) => {
     console.log('Main process: create-folder called with:', { name, parentPath });
@@ -49,6 +64,21 @@ function setupIpcHandlers(app) {
   });
 
   console.log('All IPC handlers registered');
+  
+  // Return cleanup function
+  return {
+    cleanup: () => {
+      console.log('Cleaning up IPC handlers');
+      handlers.forEach(handler => {
+        try {
+          ipcMain.removeHandler(handler);
+        } catch (error) {
+          console.error(`Error removing handler ${handler}:`, error);
+        }
+      });
+      console.log('IPC handlers cleanup complete');
+    }
+  };
 }
 
 module.exports = {

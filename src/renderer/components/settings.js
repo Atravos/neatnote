@@ -18,6 +18,7 @@ export class SettingsComponent {
     this.themeService = themeService;
     
     this.setupSettings();
+    this.createUninstallButton();
     console.log('Settings component initialized');
   }
 
@@ -81,6 +82,68 @@ export class SettingsComponent {
       console.log('Settings setup complete');
     } catch (error) {
       console.error('Error in setupSettings:', error);
+    }
+  }
+
+  /**
+   * Create uninstall button in settings
+   */
+  createUninstallButton() {
+    try {
+      // Create a new section for advanced options
+      const advancedSection = document.createElement('div');
+      advancedSection.className = 'settings-section';
+      
+      const title = document.createElement('h4');
+      title.textContent = 'Advanced';
+      advancedSection.appendChild(title);
+      
+      // Create uninstall button
+      const uninstallButton = document.createElement('button');
+      uninstallButton.className = 'danger-button';
+      uninstallButton.textContent = 'Uninstall NeatNote';
+      uninstallButton.style.backgroundColor = '#f44336';
+      uninstallButton.style.color = 'white';
+      uninstallButton.style.padding = '8px 16px';
+      uninstallButton.style.border = 'none';
+      uninstallButton.style.borderRadius = '4px';
+      uninstallButton.style.cursor = 'pointer';
+      uninstallButton.style.marginTop = '12px';
+      
+      // Add click handler
+      uninstallButton.addEventListener('click', async () => {
+        try {
+          console.log('Uninstall button clicked');
+          const result = await window.api.uninstallApp();
+          
+          if (result.success) {
+            console.log('Uninstall process initiated');
+            // App will quit itself during uninstall
+          } else if (result.cancelled) {
+            console.log('Uninstall cancelled by user');
+          } else {
+            console.error('Uninstall failed:', result.error);
+            alert(`Failed to uninstall: ${result.error}`);
+          }
+        } catch (error) {
+          console.error('Error during uninstall:', error);
+          alert(`Error during uninstall: ${error.message}`);
+        }
+      });
+      
+      // Add button to section
+      advancedSection.appendChild(uninstallButton);
+      
+      // Find the settings container and append this section
+      const settingsContainer = this.elements.settingsOverlay.querySelector('.settings-container .modal-body');
+      if (settingsContainer) {
+        settingsContainer.appendChild(advancedSection);
+        console.log('Uninstall button added to settings');
+      } else {
+        console.error('Settings container not found!');
+      }
+    } catch (error) {
+      console.error('Error creating uninstall button:', error);
     }
   }
 

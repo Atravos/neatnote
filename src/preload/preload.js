@@ -127,6 +127,22 @@ const apiMethods = {
       console.error('Delete item error:', error);
       return { success: false, error: error.message };
     }
+  },
+  
+  /**
+   * Uninstall the application
+   * @returns {Promise<Object>} Result with success flag or error
+   */
+  uninstallApp: async () => {
+    try {
+      console.log('Renderer: Requesting app uninstallation');
+      const result = await ipcRenderer.invoke('uninstall-app');
+      console.log('Uninstall request result:', result);
+      return result;
+    } catch (error) {
+      console.error('Uninstall request error:', error);
+      return { success: false, error: error.message };
+    }
   }
 };
 

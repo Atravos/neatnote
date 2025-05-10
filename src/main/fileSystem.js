@@ -1,5 +1,40 @@
 const fs = require('fs');
 const path = require('path');
+const processManager = require('./processManager');
+
+// Track open file handles
+const openHandles = new Map();
+
+/**
+ * Register a file handle for tracking
+ * @param {string} filePath - Path to the file
+ * @param {*} handle - File handle object
+ */
+function registerHandle(filePath, handle) {
+  if (openHandles.has(filePath)) {
+    // Close existing handle first
+    try {
+      const existing = openHandles.get(filePath);
+      if (existing && existing.close) {
+        existing.close();
+      }
+    } catch (err) {
+      console.error(`Error closing existing handle for ${filePath}:`, err);
+    }
+  }
+  
+  openHandles.set(filePath, handle);
+  processManager.register(filePath, () => {
+    try {
+      if (handle && handle.close) {
+        handle.close();
+      }
+      openHandles.delete(filePath);
+    } catch (err) {
+      console.error(`Error closing handle for ${filePath}:`, err);
+    }
+  });
+}
 
 /**
  * Create a new folder
@@ -60,7 +95,17 @@ function createFile(name, parentPath, userDataPath) {
     console.log('Creating file at:', filePath);
     
     if (!fs.existsSync(filePath)) {
-      fs.writeFileSync(filePath, '');
+      let fileHandle = null;
+      try {
+        // Use explicit file handle for better tracking
+        fileHandle = fs.openSync(filePath, 'w');
+        fs.writeSync(fileHandle, '');
+      } finally {
+        if (fileHandle !== null) {
+          fs.closeSync(fileHandle);
+        }
+      }
+      
       console.log('File created successfully');
       return { success: true, path: filePath };
     }
@@ -79,13 +124,27 @@ function createFile(name, parentPath, userDataPath) {
  * @returns {Object} Result object with success flag and content or error
  */
 function readFile(filePath) {
+  let fileHandle = null;
   try {
-    const content = fs.readFileSync(filePath, 'utf8');
+    fileHandle = fs.openSync(filePath, 'r');
+    const stats = fs.fstatSync(fileHandle);
+    const buffer = Buffer.alloc(stats.size);
+    fs.readSync(fileHandle, buffer, 0, stats.size, 0);
+    const content = buffer.toString('utf8');
+    
     console.log('File read successfully');
     return { success: true, content };
   } catch (error) {
     console.error('Error reading file:', error);
     return { success: false, error: error.message };
+  } finally {
+    if (fileHandle !== null) {
+      try {
+        fs.closeSync(fileHandle);
+      } catch (err) {
+        console.error('Error closing file handle:', err);
+      }
+    }
   }
 }
 
@@ -96,13 +155,25 @@ function readFile(filePath) {
  * @returns {Object} Result object with success flag or error
  */
 function saveFile(filePath, content) {
+  let fileHandle = null;
   try {
-    fs.writeFileSync(filePath, content);
+    // Open with explicit file handle
+    fileHandle = fs.openSync(filePath, 'w');
+    fs.writeSync(fileHandle, content || '');
+    
     console.log('File saved successfully');
     return { success: true };
   } catch (error) {
     console.error('Error saving file:', error);
     return { success: false, error: error.message };
+  } finally {
+    if (fileHandle !== null) {
+      try {
+        fs.closeSync(fileHandle);
+      } catch (err) {
+        console.error('Error closing file handle:', err);
+      }
+    }
   }
 }
 
@@ -180,7 +251,24 @@ function moveFile(sourcePath, targetDir, userDataPath) {
       return { success: true, newPath: targetPath };
     }
     
-    fs.renameSync(sourcePath, targetPath);
+    // Close any open handles to the source file
+    if (openHandles.has(sourcePath)) {
+      try {
+        const handle = openHandles.get(sourcePath);
+        if (handle && handle.close) {
+          handle.close();
+        }
+        openHandles.delete(sourcePath);
+        processManager.unregister(sourcePath);
+      } catch (err) {
+        console.error(`Error closing handle for ${sourcePath}:`, err);
+      }
+    }
+    
+    // Use a more reliable copy & delete approach instead of rename
+    fs.copyFileSync(sourcePath, targetPath);
+    fs.unlinkSync(sourcePath);
+    
     console.log('File moved successfully');
     return { success: true, newPath: targetPath };
   } catch (error) {
@@ -196,6 +284,20 @@ function moveFile(sourcePath, targetDir, userDataPath) {
  */
 function deleteItem(itemPath) {
   try {
+    // Close any open handles to this item
+    if (openHandles.has(itemPath)) {
+      try {
+        const handle = openHandles.get(itemPath);
+        if (handle && handle.close) {
+          handle.close();
+        }
+        openHandles.delete(itemPath);
+        processManager.unregister(itemPath);
+      } catch (err) {
+        console.error(`Error closing handle for ${itemPath}:`, err);
+      }
+    }
+    
     const stats = fs.statSync(itemPath);
     
     if (stats.isDirectory()) {
@@ -215,6 +317,30 @@ function deleteItem(itemPath) {
   }
 }
 
+/**
+ * Close all open file handles
+ */
+function closeAllHandles() {
+  console.log(`Closing all open file handles (${openHandles.size})...`);
+  
+  openHandles.forEach((handle, filePath) => {
+    try {
+      if (handle && handle.close) {
+        handle.close();
+      }
+      console.log(`Closed handle for ${filePath}`);
+    } catch (error) {
+      console.error(`Error closing handle for ${filePath}:`, error);
+    }
+  });
+  
+  openHandles.clear();
+  console.log('All file handles closed');
+}
+
+// Register cleanup handler
+processManager.register('fileSystem', closeAllHandles);
+
 module.exports = {
   createFolder,
   createFile,
@@ -222,5 +348,6 @@ module.exports = {
   saveFile,
   listFiles,
   moveFile,
-  deleteItem
+  deleteItem,
+  closeAllHandles
 };
