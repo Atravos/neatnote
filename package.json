@@ -5,7 +5,6 @@
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
-    "prebuild": "node build-cleanup.js",
     "build": "electron-builder",
     "build:mac": "electron-builder --mac",
     "build:win": "electron-builder --win",
@@ -24,8 +23,7 @@
     "files": [
       "src/**/*",
       "assets/**/*",
-      "index.html",
-      "installer/**/*"
+      "index.html"
     ],
     "mac": {
       "category": "public.app-category.productivity"
@@ -45,11 +43,11 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "runAfterFinish": true,
-      "deleteAppDataOnUninstall": true,
-      "perMachine": false,
-      "menuCategory": "NeatNote", 
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
       "shortcutName": "NeatNote",
-      "include": "installer/win/custom-installer.nsh"
+      "uninstallDisplayName": "NeatNote",
+      "artifactName": "NeatNote-Setup-${version}.exe"
     }
   },
   "dependencies": {
