@@ -6,7 +6,6 @@ on:
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:
-    # Manual trigger
 
 jobs:
   build:
@@ -28,7 +27,7 @@ jobs:
       run: npm run build:win
     
     - name: Upload Windows installer
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v2
       with:
         name: windows-installer
         path: dist/*.exe
