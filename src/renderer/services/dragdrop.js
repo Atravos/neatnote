@@ -149,16 +149,17 @@ export class DragDropService {
     container.addEventListener('drop', (e) => {
       e.preventDefault();
       e.stopPropagation();
+
+      // Save the action BEFORE hideIndicator() clears it
+      const action = this.currentDropAction;
+      const sourcePath = e.dataTransfer.getData('text/plain');
+
       this.hideIndicator();
       document.querySelectorAll('.drop-target-highlight').forEach(el =>
         el.classList.remove('drop-target-highlight')
       );
 
-      const sourcePath = e.dataTransfer.getData('text/plain');
-      if (!sourcePath || !this.currentDropAction) return;
-
-      const action = this.currentDropAction;
-      this.currentDropAction = null;
+      if (!sourcePath || !action) return;
 
       if (action.type === 'into') {
         // Prevent dropping folder into itself
