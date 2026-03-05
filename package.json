@@ -1,6 +1,6 @@
 {
   "name": "neatnote",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "A lightweight note-taking application",
   "main": "src/main/main.js",
   "scripts": {
@@ -30,7 +30,9 @@
       {
         "from": "dist/cleanup.exe",
         "to": "cleanup.exe",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "mac": {
@@ -40,12 +42,17 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ]
     },
     "linux": {
-      "target": ["AppImage", "deb"]
+      "target": [
+        "AppImage",
+        "deb"
+      ]
     },
     "nsis": {
       "oneClick": false,
