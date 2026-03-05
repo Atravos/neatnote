@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const Store = require('electron-store');
 const { setupIpcHandlers } = require('./ipcHandlers');
 const processManager = require('./processManager');
@@ -29,16 +30,8 @@ function createWindow() {
   // Enable DevTools to see errors (uncomment for debugging)
   // mainWindow.webContents.openDevTools();
   
-  // Ensure clean shutdown when window is closed
   mainWindow.on('closed', () => {
     mainWindow = null;
-  });
-  
-  // Register main window as a resource to track
-  processManager.register(mainWindow, () => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.close();
-    }
   });
 }
 
@@ -54,16 +47,13 @@ app.whenReady().then(() => {
   processManager.register('ipcHandlers', ipcHandlersCleanup);
 
   app.on('activate', () => {
-    // On macOS it's common to re-create a window in the app when the
-    // dock icon is clicked and there are no other windows open.
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 });
 
-// Handle app quitting
+// Handle app quitting — perform cleanup before exit
 app.on('before-quit', (event) => {
   if (!processManager.isQuitting()) {
-    // First time we're attempting to quit - do cleanup first
     event.preventDefault();
     console.log('Starting application shutdown process...');
     
@@ -72,12 +62,12 @@ app.on('before-quit', (event) => {
     
     // Flush store data
     try {
-      store.store = {...store.store}; // Force a save
+      store.store = { ...store.store };
     } catch (error) {
       console.error('Error saving store data:', error);
     }
     
-    // Queue up actual quit for next tick
+    // Now actually quit
     setTimeout(() => {
       console.log('Quitting application...');
       app.quit();
@@ -92,6 +82,39 @@ app.on('window-all-closed', () => {
   }
 });
 
+/**
+ * Find the NSIS uninstaller executable for this application.
+ * electron-builder's NSIS installer writes the uninstaller path into the
+ * registry and also places it in the installation directory.
+ */
+function findUninstallerPath() {
+  if (process.platform !== 'win32') return null;
+
+  // The app is typically installed to a directory like:
+  //   C:\Users\<user>\AppData\Local\Programs\NeatNote\
+  // The uninstaller lives in that same directory.
+  const installDir = path.dirname(app.getPath('exe'));
+  const uninstallerName = 'Uninstall NeatNote.exe';
+  const uninstallerPath = path.join(installDir, uninstallerName);
+
+  if (fs.existsSync(uninstallerPath)) {
+    return uninstallerPath;
+  }
+
+  // Fallback: look for any Uninstall*.exe in the install directory
+  try {
+    const files = fs.readdirSync(installDir);
+    const uninstaller = files.find(f => f.toLowerCase().startsWith('uninstall') && f.toLowerCase().endsWith('.exe'));
+    if (uninstaller) {
+      return path.join(installDir, uninstaller);
+    }
+  } catch (err) {
+    console.error('Error searching for uninstaller:', err);
+  }
+
+  return null;
+}
+
 // Handle uninstall request from renderer
 ipcMain.handle('uninstall-app', async () => {
   const { response } = await dialog.showMessageBox({
@@ -104,31 +127,41 @@ ipcMain.handle('uninstall-app', async () => {
     cancelId: 0
   });
   
-  if (response === 1) { // User chose "Uninstall"
+  if (response === 1) {
     try {
-      // Clean up app data to prevent locks
-      processManager.cleanupAll();
-      
-      // On Windows, use the Windows API to uninstall
       if (process.platform === 'win32') {
         const { spawn } = require('child_process');
-        
-        // Use Control Panel's Programs and Features to uninstall
-        spawn('control', ['appwiz.cpl'], { detached: true });
-        
-        // Let the user know they need to complete uninstallation
-        dialog.showMessageBox({
-          type: 'info',
-          title: 'Complete Uninstallation',
-          message: 'Please complete uninstallation using the Windows Control Panel that will open.',
-          detail: 'Select NeatNote from the list and click Uninstall.'
-        });
-        
-        // Exit the app after showing the message
-        setTimeout(() => app.quit(), 2000);
+        const uninstallerPath = findUninstallerPath();
+
+        if (uninstallerPath) {
+          // Launch the actual NSIS uninstaller in a detached process
+          // so it continues after our app exits.
+          spawn(uninstallerPath, ['_?=' + path.dirname(uninstallerPath)], {
+            detached: true,
+            stdio: 'ignore'
+          }).unref();
+
+          // Give the uninstaller a moment to start, then quit ourselves
+          // so we don't hold file locks.
+          setTimeout(() => {
+            processManager.cleanupAll();
+            app.quit();
+          }, 500);
+
+          return { success: true };
+        } else {
+          // Couldn't find the uninstaller — direct user to Settings > Apps
+          await dialog.showMessageBox({
+            type: 'info',
+            title: 'Uninstall NeatNote',
+            message: 'Please uninstall NeatNote through Windows Settings.',
+            detail: 'Go to Settings > Apps > Installed apps, find NeatNote, and click Uninstall.'
+          });
+          return { success: false, error: 'Uninstaller not found' };
+        }
       }
       
-      return { success: true };
+      return { success: false, error: 'Uninstall is only supported on Windows through this button.' };
     } catch (error) {
       console.error('Error initiating uninstall:', error);
       return { success: false, error: error.message };

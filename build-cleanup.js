@@ -4,33 +4,36 @@ const path = require('path');
 const os = require('os');
 
 console.log('Building cleanup utility...');
+console.log('Platform:', os.platform());
+
+// Ensure dist directory exists
+if (!fs.existsSync('dist')) {
+  fs.mkdirSync('dist', { recursive: true });
+}
 
 try {
-  // Detect platform
   const isWindows = os.platform() === 'win32';
 
-  // Skip actual build on macOS but create a placeholder
-  if (!isWindows) {
-    console.log('Building on non-Windows platform - creating placeholder cleanup utility');
-    
-    // Create dist directory if needed
-    if (!fs.existsSync('dist')) {
-      fs.mkdirSync('dist', { recursive: true });
-    }
-    
-    // Create a simple text file as placeholder
-    fs.writeFileSync('dist/cleanup.exe', 'This is a placeholder for the cleanup utility.\n');
-    
-    console.log('Placeholder cleanup utility created');
+  if (isWindows) {
+    // On Windows, build the real executable with pkg
+    console.log('Building cleanup.exe for Windows...');
+    execSync('npx pkg src/main/cleanup.js --target node16-win-x64 --output dist/cleanup.exe', {
+      stdio: 'inherit'
+    });
+    console.log('cleanup.exe built successfully.');
   } else {
-    // On Windows, actually build the executable
-    execSync('npx pkg src/main/cleanup.js --target node14-win-x64 --output dist/cleanup.exe');
-    console.log('Cleanup utility built on Windows');
+    // On non-Windows platforms, create a placeholder so the build doesn't fail
+    // when electron-builder tries to include it in extraResources.
+    console.log('Non-Windows platform detected — creating placeholder cleanup.exe');
+    fs.writeFileSync(
+      'dist/cleanup.exe',
+      '#!/bin/sh\necho "Cleanup placeholder — Windows only"\n'
+    );
+    console.log('Placeholder created at dist/cleanup.exe');
   }
-  
-  // Note: This step depends on running electron-builder first to create the resources directory
-  console.log('Cleanup utility process completed');
 } catch (error) {
-  console.error('Failed to handle cleanup utility:', error);
-  // Don't exit - let the build continue
+  console.error('Failed to build cleanup utility:', error.message);
+  // Create an empty placeholder so the build can still succeed
+  fs.writeFileSync('dist/cleanup.exe', '');
+  console.warn('Created empty placeholder to allow build to continue.');
 }

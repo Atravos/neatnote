@@ -1,14 +1,15 @@
 {
   "name": "neatnote",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "A lightweight note-taking application",
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder",
-    "build:mac": "electron-builder --mac",
-    "build:win": "electron-builder --win",
-    "build:linux": "electron-builder --linux"
+    "prebuild:cleanup": "node build-cleanup.js",
+    "build": "npm run prebuild:cleanup && electron-builder",
+    "build:mac": "npm run prebuild:cleanup && electron-builder --mac",
+    "build:win": "npm run prebuild:cleanup && electron-builder --win",
+    "build:linux": "npm run prebuild:cleanup && electron-builder --linux"
   },
   "author": "",
   "license": "MIT",
@@ -24,6 +25,13 @@
       "src/**/*",
       "assets/**/*",
       "index.html"
+    ],
+    "extraResources": [
+      {
+        "from": "dist/cleanup.exe",
+        "to": "cleanup.exe",
+        "filter": ["**/*"]
+      }
     ],
     "mac": {
       "category": "public.app-category.productivity"
@@ -47,7 +55,8 @@
       "createStartMenuShortcut": true,
       "shortcutName": "NeatNote",
       "uninstallDisplayName": "NeatNote",
-      "artifactName": "NeatNote-Setup-${version}.exe"
+      "artifactName": "NeatNote-Setup-${version}.exe",
+      "include": "installer/win/custom-installer.nsh"
     }
   },
   "dependencies": {

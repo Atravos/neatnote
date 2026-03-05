@@ -6,37 +6,6 @@ const processManager = require('./processManager');
 const openHandles = new Map();
 
 /**
- * Register a file handle for tracking
- * @param {string} filePath - Path to the file
- * @param {*} handle - File handle object
- */
-function registerHandle(filePath, handle) {
-  if (openHandles.has(filePath)) {
-    // Close existing handle first
-    try {
-      const existing = openHandles.get(filePath);
-      if (existing && existing.close) {
-        existing.close();
-      }
-    } catch (err) {
-      console.error(`Error closing existing handle for ${filePath}:`, err);
-    }
-  }
-  
-  openHandles.set(filePath, handle);
-  processManager.register(filePath, () => {
-    try {
-      if (handle && handle.close) {
-        handle.close();
-      }
-      openHandles.delete(filePath);
-    } catch (err) {
-      console.error(`Error closing handle for ${filePath}:`, err);
-    }
-  });
-}
-
-/**
  * Create a new folder
  * @param {string} name - Folder name
  * @param {string} parentPath - Path to parent folder, or null for root
@@ -85,7 +54,6 @@ function createFile(name, parentPath, userDataPath) {
       basePath = parentPath;
     } else {
       basePath = path.join(userDataPath, 'notes');
-      // Create notes directory if it doesn't exist
       if (!fs.existsSync(basePath)) {
         fs.mkdirSync(basePath, { recursive: true });
       }
@@ -95,17 +63,7 @@ function createFile(name, parentPath, userDataPath) {
     console.log('Creating file at:', filePath);
     
     if (!fs.existsSync(filePath)) {
-      let fileHandle = null;
-      try {
-        // Use explicit file handle for better tracking
-        fileHandle = fs.openSync(filePath, 'w');
-        fs.writeSync(fileHandle, '');
-      } finally {
-        if (fileHandle !== null) {
-          fs.closeSync(fileHandle);
-        }
-      }
-      
+      fs.writeFileSync(filePath, '', 'utf8');
       console.log('File created successfully');
       return { success: true, path: filePath };
     }
@@ -124,27 +82,13 @@ function createFile(name, parentPath, userDataPath) {
  * @returns {Object} Result object with success flag and content or error
  */
 function readFile(filePath) {
-  let fileHandle = null;
   try {
-    fileHandle = fs.openSync(filePath, 'r');
-    const stats = fs.fstatSync(fileHandle);
-    const buffer = Buffer.alloc(stats.size);
-    fs.readSync(fileHandle, buffer, 0, stats.size, 0);
-    const content = buffer.toString('utf8');
-    
+    const content = fs.readFileSync(filePath, 'utf8');
     console.log('File read successfully');
     return { success: true, content };
   } catch (error) {
     console.error('Error reading file:', error);
     return { success: false, error: error.message };
-  } finally {
-    if (fileHandle !== null) {
-      try {
-        fs.closeSync(fileHandle);
-      } catch (err) {
-        console.error('Error closing file handle:', err);
-      }
-    }
   }
 }
 
@@ -155,25 +99,13 @@ function readFile(filePath) {
  * @returns {Object} Result object with success flag or error
  */
 function saveFile(filePath, content) {
-  let fileHandle = null;
   try {
-    // Open with explicit file handle
-    fileHandle = fs.openSync(filePath, 'w');
-    fs.writeSync(fileHandle, content || '');
-    
+    fs.writeFileSync(filePath, content || '', 'utf8');
     console.log('File saved successfully');
     return { success: true };
   } catch (error) {
     console.error('Error saving file:', error);
     return { success: false, error: error.message };
-  } finally {
-    if (fileHandle !== null) {
-      try {
-        fs.closeSync(fileHandle);
-      } catch (err) {
-        console.error('Error closing file handle:', err);
-      }
-    }
   }
 }
 
@@ -188,7 +120,6 @@ function listFiles(dirPath, userDataPath) {
     const rootDir = dirPath || path.join(userDataPath, 'notes');
     console.log('Listing files in directory:', rootDir);
     
-    // Create root directory if it doesn't exist
     if (!fs.existsSync(rootDir)) {
       fs.mkdirSync(rootDir, { recursive: true });
       console.log('Created root directory:', rootDir);
@@ -222,7 +153,6 @@ function listFiles(dirPath, userDataPath) {
  */
 function moveFile(sourcePath, targetDir, userDataPath) {
   try {
-    // First check if source file exists
     if (!fs.existsSync(sourcePath)) {
       console.error('Source file does not exist:', sourcePath);
       return { success: false, error: `File does not exist: ${sourcePath}` };
@@ -231,10 +161,8 @@ function moveFile(sourcePath, targetDir, userDataPath) {
     const fileName = path.basename(sourcePath);
     let targetPath;
     
-    // If targetDir is null, move to the root notes directory
     if (targetDir === null) {
       const rootNotesDir = path.join(userDataPath, 'notes');
-      // Ensure root directory exists
       if (!fs.existsSync(rootNotesDir)) {
         fs.mkdirSync(rootNotesDir, { recursive: true });
       }
@@ -246,26 +174,17 @@ function moveFile(sourcePath, targetDir, userDataPath) {
     console.log('Moving file from', sourcePath, 'to', targetPath);
     
     // Skip if source and destination are the same
-    if (sourcePath === targetPath) {
+    if (path.resolve(sourcePath) === path.resolve(targetPath)) {
       console.log('Source and target paths are identical, no need to move');
       return { success: true, newPath: targetPath };
     }
     
-    // Close any open handles to the source file
-    if (openHandles.has(sourcePath)) {
-      try {
-        const handle = openHandles.get(sourcePath);
-        if (handle && handle.close) {
-          handle.close();
-        }
-        openHandles.delete(sourcePath);
-        processManager.unregister(sourcePath);
-      } catch (err) {
-        console.error(`Error closing handle for ${sourcePath}:`, err);
-      }
+    // Check if target already exists to avoid overwriting
+    if (fs.existsSync(targetPath)) {
+      return { success: false, error: 'A file with the same name already exists in the target folder' };
     }
     
-    // Use a more reliable copy & delete approach instead of rename
+    // Use copy & delete for cross-device moves
     fs.copyFileSync(sourcePath, targetPath);
     fs.unlinkSync(sourcePath);
     
@@ -284,26 +203,15 @@ function moveFile(sourcePath, targetDir, userDataPath) {
  */
 function deleteItem(itemPath) {
   try {
-    // Close any open handles to this item
-    if (openHandles.has(itemPath)) {
-      try {
-        const handle = openHandles.get(itemPath);
-        if (handle && handle.close) {
-          handle.close();
-        }
-        openHandles.delete(itemPath);
-        processManager.unregister(itemPath);
-      } catch (err) {
-        console.error(`Error closing handle for ${itemPath}:`, err);
-      }
+    if (!fs.existsSync(itemPath)) {
+      return { success: false, error: 'Item does not exist' };
     }
-    
+
     const stats = fs.statSync(itemPath);
     
     if (stats.isDirectory()) {
       console.log('Deleting directory:', itemPath);
-      // Recursively delete directory and all contents
-      fs.rmdirSync(itemPath, { recursive: true });
+      fs.rmSync(itemPath, { recursive: true, force: true });
     } else {
       console.log('Deleting file:', itemPath);
       fs.unlinkSync(itemPath);
@@ -318,14 +226,14 @@ function deleteItem(itemPath) {
 }
 
 /**
- * Close all open file handles
+ * Close all open file handles (called during shutdown)
  */
 function closeAllHandles() {
   console.log(`Closing all open file handles (${openHandles.size})...`);
   
   openHandles.forEach((handle, filePath) => {
     try {
-      if (handle && handle.close) {
+      if (handle && typeof handle.close === 'function') {
         handle.close();
       }
       console.log(`Closed handle for ${filePath}`);
