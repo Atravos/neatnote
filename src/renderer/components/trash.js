@@ -11,13 +11,15 @@ export class TrashComponent {
    * @param {EditorComponent} editorComponent - Editor component instance
    * @param {FolderTreeComponent} folderTreeComponent - Folder tree component instance
    * @param {DragDropService} dragDropService - Drag and drop service instance
+   * @param {ModalComponent} modalComponent - Modal component instance
    */
-  constructor(container, fileService, editorComponent, folderTreeComponent, dragDropService) {
+  constructor(container, fileService, editorComponent, folderTreeComponent, dragDropService, modalComponent) {
     this.container = container;
     this.fileService = fileService;
     this.editorComponent = editorComponent;
     this.folderTreeComponent = folderTreeComponent;
     this.dragDropService = dragDropService;
+    this.modalComponent = modalComponent;
     
     this.setupTrash();
     console.log('Trash component initialized');
@@ -55,33 +57,36 @@ export class TrashComponent {
   async handleTrashDrop(itemPath) {
     if (!itemPath) return;
     
-    const itemName = itemPath.split('/').pop();
+    const itemName = itemPath.split(/[/\\]/).pop();
     
-    // Ask for confirmation
-    if (confirm(`Are you sure you want to delete "${itemName}"? This cannot be undone.`)) {
-      try {
-        // Visual feedback
-        this.container.classList.add('confirm');
-        setTimeout(() => this.container.classList.remove('confirm'), 500);
-        
-        const result = await this.fileService.deleteItem(itemPath);
-        
-        if (result.success) {
-          console.log('Item deleted successfully');
+    // Use custom modal instead of native confirm() to avoid focus issues on Windows
+    this.modalComponent.showConfirm(
+      `Delete "${itemName}"? This cannot be undone.`,
+      async (confirmed) => {
+        if (!confirmed) return;
+
+        try {
+          // Visual feedback
+          this.container.classList.add('confirm');
+          setTimeout(() => this.container.classList.remove('confirm'), 500);
           
-          // If the deleted item was the active file, clear the editor
-          this.editorComponent.handleFileDeleted(itemPath);
+          const result = await this.fileService.deleteItem(itemPath);
           
-          // Refresh the file structure
-          this.folderTreeComponent.refresh();
-        } else {
-          console.error('Failed to delete item:', result.error);
-          alert('Failed to delete: ' + result.error);
+          if (result.success) {
+            console.log('Item deleted successfully');
+            
+            // If the deleted item was the active file, clear the editor
+            this.editorComponent.handleFileDeleted(itemPath);
+            
+            // Refresh the file structure
+            this.folderTreeComponent.refresh();
+          } else {
+            console.error('Failed to delete item:', result.error);
+          }
+        } catch (error) {
+          console.error('Error during deletion:', error);
         }
-      } catch (error) {
-        console.error('Error during deletion:', error);
-        alert('Error during deletion: ' + error.message);
       }
-    }
+    );
   }
 }

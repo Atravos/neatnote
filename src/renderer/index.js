@@ -57,13 +57,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize modal component
   const modalComponent = new ModalComponent(modalElements);
   
-  // Initialize trash component
+  // Initialize trash component — pass modalComponent to avoid native confirm()
   const trashComponent = new TrashComponent(
     document.getElementById('trash-container'),
     fileService,
     editorComponent,
     folderTreeComponent,
-    dragDropService
+    dragDropService,
+    modalComponent
   );
   
   // Get DOM elements for the settings component

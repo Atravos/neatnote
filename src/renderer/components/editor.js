@@ -42,7 +42,7 @@ export class EditorComponent {
     this.statusDot.style.width = '8px';
     this.statusDot.style.height = '8px';
     this.statusDot.style.borderRadius = '50%';
-    this.statusDot.style.backgroundColor = '#4CAF50'; // Green for saved
+    this.statusDot.style.backgroundColor = '#4CAF50';
     this.statusDot.style.marginRight = '6px';
     this.statusDot.style.transition = 'background-color 0.3s, box-shadow 0.3s';
     
@@ -108,7 +108,7 @@ export class EditorComponent {
         // Show saving indicator
         this.autoSaveIndicator.textContent = 'Saving...';
         this.autoSaveContainer.style.opacity = '1';
-        this.statusDot.style.backgroundColor = '#FF9800'; // Orange for saving
+        this.statusDot.style.backgroundColor = '#FF9800';
         this.statusDot.style.boxShadow = '0 0 5px #FF9800';
         this.statusDot.style.animation = 'pulse 1s infinite';
         
@@ -117,11 +117,10 @@ export class EditorComponent {
         if (result.success) {
           this.isEditorDirty = false;
           this.autoSaveIndicator.textContent = 'Saved';
-          this.statusDot.style.backgroundColor = '#4CAF50'; // Green for saved
+          this.statusDot.style.backgroundColor = '#4CAF50';
           this.statusDot.style.boxShadow = '0 0 5px #4CAF50';
-          this.statusDot.style.animation = 'none'; // Stop pulsing
+          this.statusDot.style.animation = 'none';
           
-          // Fade out the indicator after a brief delay
           setTimeout(() => {
             this.autoSaveContainer.style.opacity = '0';
           }, 1500);
@@ -129,16 +128,16 @@ export class EditorComponent {
           console.log('File auto-saved successfully');
         } else {
           this.autoSaveIndicator.textContent = 'Save failed';
-          this.statusDot.style.backgroundColor = '#F44336'; // Red for error
+          this.statusDot.style.backgroundColor = '#F44336';
           this.statusDot.style.boxShadow = '0 0 5px #F44336';
-          this.statusDot.style.animation = 'none'; // Stop pulsing
+          this.statusDot.style.animation = 'none';
           console.error('Failed to auto-save file:', result.error);
         }
       } catch (error) {
         this.autoSaveIndicator.textContent = 'Save failed';
-        this.statusDot.style.backgroundColor = '#F44336'; // Red for error
+        this.statusDot.style.backgroundColor = '#F44336';
         this.statusDot.style.boxShadow = '0 0 5px #F44336';
-        this.statusDot.style.animation = 'none'; // Stop pulsing
+        this.statusDot.style.animation = 'none';
         console.error('Error in auto-save:', error);
       }
     }
@@ -176,11 +175,9 @@ export class EditorComponent {
         }, 1500);
       } else {
         console.error('Failed to save file:', result.error);
-        alert(`Failed to save file: ${result.error}`);
       }
     } catch (error) {
       console.error('Error in saveCurrentFile:', error);
-      alert(`Error saving file: ${error.message}`);
     }
   }
 
@@ -192,11 +189,10 @@ export class EditorComponent {
     try {
       console.log('Opening file:', filePath);
       
-      // Check if current file has unsaved changes
+      // Auto-save any unsaved changes before switching files
+      // instead of using native confirm() which causes focus issues on Windows
       if (this.isEditorDirty && this.activeFile) {
-        if (confirm('You have unsaved changes. Save before opening a new file?')) {
-          await this.saveCurrentFile();
-        }
+        await this.saveCurrentFile();
       }
       
       const result = await this.fileService.readFile(filePath);
@@ -209,11 +205,9 @@ export class EditorComponent {
         console.log('File opened successfully');
       } else {
         console.error('Failed to open file:', result.error);
-        alert(`Failed to open file: ${result.error}`);
       }
     } catch (error) {
       console.error('Error in openFile:', error);
-      alert(`Error opening file: ${error.message}`);
     }
   }
 
