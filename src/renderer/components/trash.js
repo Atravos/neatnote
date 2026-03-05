@@ -4,15 +4,6 @@ import { icons } from '../utils/icons.js';
  * TrashComponent - Manages the trash functionality
  */
 export class TrashComponent {
-  /**
-   * Initialize the trash component
-   * @param {HTMLElement} container - Trash container element
-   * @param {FileService} fileService - File service instance
-   * @param {EditorComponent} editorComponent - Editor component instance
-   * @param {FolderTreeComponent} folderTreeComponent - Folder tree component instance
-   * @param {DragDropService} dragDropService - Drag and drop service instance
-   * @param {ModalComponent} modalComponent - Modal component instance
-   */
   constructor(container, fileService, editorComponent, folderTreeComponent, dragDropService, modalComponent) {
     this.container = container;
     this.fileService = fileService;
@@ -25,48 +16,33 @@ export class TrashComponent {
     console.log('Trash component initialized');
   }
 
-  /**
-   * Set up the trash container
-   */
   setupTrash() {
-    if (!this.container) {
-      console.error('Trash container not found');
-      return;
-    }
+    if (!this.container) return;
     
-    // Replace trash icon with SVG
     const trashIconElement = this.container.querySelector('.trash-icon');
     if (trashIconElement) {
       trashIconElement.innerHTML = icons.trash;
     }
     
-    // Make trash a drop target
-    this.dragDropService.makeDropTarget(
-      this.container,
-      'trash', // Special identifier for trash
-      (sourcePath) => this.handleTrashDrop(sourcePath)
-    );
+    // Use the new single-handler trash drop
+    this.dragDropService.setupTrash(this.container, (sourcePath) => {
+      this.handleTrashDrop(sourcePath);
+    });
     
     console.log('Trash container set up');
   }
 
-  /**
-   * Handle item drop on trash
-   * @param {string} itemPath - Path of item to delete
-   */
   async handleTrashDrop(itemPath) {
     if (!itemPath) return;
     
     const itemName = itemPath.split(/[/\\]/).pop();
     
-    // Use custom modal instead of native confirm() to avoid focus issues on Windows
     this.modalComponent.showConfirm(
       `Delete "${itemName}"? This cannot be undone.`,
       async (confirmed) => {
         if (!confirmed) return;
 
         try {
-          // Visual feedback
           this.container.classList.add('confirm');
           setTimeout(() => this.container.classList.remove('confirm'), 500);
           
@@ -74,11 +50,7 @@ export class TrashComponent {
           
           if (result.success) {
             console.log('Item deleted successfully');
-            
-            // If the deleted item was the active file, clear the editor
             this.editorComponent.handleFileDeleted(itemPath);
-            
-            // Refresh the file structure
             this.folderTreeComponent.refresh();
           } else {
             console.error('Failed to delete item:', result.error);

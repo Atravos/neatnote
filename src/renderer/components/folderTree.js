@@ -1,8 +1,8 @@
 import { icons } from '../utils/icons.js';
 
 /**
- * FolderTreeComponent - Manages the folder tree sidebar
- * Supports drag-to-reorder and drag-into-folder.
+ * FolderTreeComponent - Manages the folder tree sidebar.
+ * Uses a single-delegate drag system — no per-element drop targets.
  */
 export class FolderTreeComponent {
   constructor(container, fileService, editorComponent, dragDropService) {
@@ -10,7 +10,14 @@ export class FolderTreeComponent {
     this.fileService = fileService;
     this.editorComponent = editorComponent;
     this.dragDropService = dragDropService;
-    
+
+    // Set up the single drag-drop delegate on the container
+    this.dragDropService.setupContainer(this.container, {
+      onReorder: (draggedPath, refName, position) => this.handleReorder(draggedPath, refName, position),
+      onMoveInto: (sourcePath, targetPath) => this.handleItemDrop(sourcePath, targetPath),
+      onMoveToRoot: (sourcePath) => this.handleItemDrop(sourcePath, null)
+    });
+
     this.loadFileStructure();
     console.log('Folder tree component initialized');
   }
@@ -21,17 +28,12 @@ export class FolderTreeComponent {
       if (result.success) {
         const sorted = await this.applySortOrder('_root', result.files);
         this.renderFileTree(sorted, this.container, '_root');
-        this.setupRootDropTarget(this.container);
       }
     } catch (error) {
       console.error('Error in loadFileStructure:', error);
     }
   }
 
-  /**
-   * Apply saved sort order to an array of file items.
-   * Items not in the saved order appear at the end in their original order.
-   */
   async applySortOrder(dirKey, items) {
     const savedOrder = await this.fileService.getSortOrder(dirKey);
     if (!savedOrder || !Array.isArray(savedOrder)) return items;
@@ -39,126 +41,32 @@ export class FolderTreeComponent {
     const orderMap = new Map();
     savedOrder.forEach((name, index) => orderMap.set(name, index));
 
-    const sorted = [...items].sort((a, b) => {
+    return [...items].sort((a, b) => {
       const posA = orderMap.has(a.name) ? orderMap.get(a.name) : 9999;
       const posB = orderMap.has(b.name) ? orderMap.get(b.name) : 9999;
       return posA - posB;
     });
-
-    return sorted;
-  }
-
-  /**
-   * Save the current visual order of items in a container
-   */
-  saveContainerOrder(dirKey, containerEl) {
-    // Collect item names from the DOM in their current visual order.
-    // Items are .folder and .file elements (skip .folder-content and .reorder-zone).
-    const names = [];
-    for (const child of containerEl.children) {
-      if (child.classList.contains('folder') || child.classList.contains('file')) {
-        const nameEl = child.querySelector('.folder-name') || child.querySelector('.file-name');
-        if (nameEl) names.push(nameEl.textContent);
-      }
-    }
-    this.fileService.setSortOrder(dirKey, names);
   }
 
   renderFileTree(items, container, dirKey) {
     try {
       if (!container) return;
       container.innerHTML = '';
-
       if (!items || items.length === 0) return;
 
-      items.forEach((item, index) => {
-        // Add a reorder drop zone before each item
-        container.appendChild(this.createReorderZone(container, dirKey, index));
-
+      items.forEach(item => {
         if (item.isDirectory) {
-          this.createFolderElement(item, container, dirKey);
+          this.createFolderElement(item, container);
         } else {
           this.createFileElement(item, container);
         }
       });
-
-      // Add a final reorder zone after the last item
-      container.appendChild(this.createReorderZone(container, dirKey, items.length));
     } catch (error) {
       console.error('Error in renderFileTree:', error);
     }
   }
 
-  /**
-   * Create a thin drop zone between items for reordering.
-   * When an item is dragged over this zone, it expands and highlights.
-   * Dropping here reorders the item to this position.
-   */
-  createReorderZone(container, dirKey, insertIndex) {
-    const zone = document.createElement('div');
-    zone.className = 'reorder-zone';
-    zone.setAttribute('data-insert-index', insertIndex);
-
-    zone.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      zone.classList.add('reorder-active');
-    });
-
-    zone.addEventListener('dragleave', () => {
-      zone.classList.remove('reorder-active');
-    });
-
-    zone.addEventListener('drop', async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      zone.classList.remove('reorder-active');
-
-      const sourcePath = e.dataTransfer.getData('text/plain');
-      if (!sourcePath) return;
-
-      // Get the source item's name from its path
-      const sourceName = sourcePath.split(/[/\\]/).pop();
-
-      // Check if the source is in the same directory as this container.
-      // Get current item names in visual order.
-      const currentNames = [];
-      for (const child of container.children) {
-        if (child.classList.contains('folder') || child.classList.contains('file')) {
-          const nameEl = child.querySelector('.folder-name') || child.querySelector('.file-name');
-          if (nameEl) currentNames.push(nameEl.textContent);
-        }
-      }
-
-      // Only reorder if the item is already in this container
-      const sourceIndex = currentNames.indexOf(sourceName);
-      if (sourceIndex === -1) return; // Not in this container — let folder drop handle it
-
-      // Build new order: remove from old position, insert at new position
-      const newOrder = currentNames.filter(n => n !== sourceName);
-      // Adjust insert index since we removed one item
-      let targetIndex = insertIndex;
-      if (sourceIndex < insertIndex) {
-        targetIndex = Math.max(0, targetIndex - 1);
-      }
-      newOrder.splice(targetIndex, 0, sourceName);
-
-      // Save and re-render
-      await this.fileService.setSortOrder(dirKey, newOrder);
-      
-      // Re-render just this level
-      if (dirKey === '_root') {
-        this.loadFileStructure();
-      } else {
-        // For subfolders, reload the parent's contents
-        this.loadFileStructure();
-      }
-    });
-
-    return zone;
-  }
-
-  createFolderElement(item, container, dirKey) {
+  createFolderElement(item, container) {
     const folderElement = document.createElement('div');
     folderElement.className = 'folder';
     folderElement.setAttribute('data-path', item.path);
@@ -178,14 +86,11 @@ export class FolderTreeComponent {
     folderElement.appendChild(iconElement);
     folderElement.appendChild(nameElement);
 
-    // Container for folder contents
     const folderContent = document.createElement('div');
     folderContent.className = 'folder-content';
     folderContent.style.display = 'none';
 
     let contentsLoaded = false;
-
-    // Sanitize the path for use as a storage key
     const subDirKey = item.name.replace(/[^a-zA-Z0-9_-]/g, '_');
 
     folderElement.addEventListener('click', async (e) => {
@@ -202,14 +107,7 @@ export class FolderTreeComponent {
       }
     });
 
-    // Make folder a drop target for moving items INTO the folder
-    this.dragDropService.makeDropTarget(
-      folderElement,
-      item.path,
-      (sourcePath, targetPath) => this.handleItemDrop(sourcePath, targetPath)
-    );
-
-    // Make folder draggable
+    // Only make it draggable — drop handling is done by the container delegate
     this.dragDropService.makeDraggable(folderElement, item.path);
 
     container.appendChild(folderElement);
@@ -260,16 +158,55 @@ export class FolderTreeComponent {
     }
   }
 
-  setupRootDropTarget(folderTreeElement) {
-    try {
-      this.dragDropService.makeDropTarget(
-        folderTreeElement,
-        null,
-        (sourcePath, targetPath) => this.handleItemDrop(sourcePath, targetPath)
-      );
-    } catch (error) {
-      console.error('Error in setupRootDropTarget:', error);
+  /**
+   * Handle reorder: move an item before or after a reference item
+   * by updating the saved sort order.
+   */
+  async handleReorder(draggedPath, refName, position) {
+    const draggedName = draggedPath.split(/[/\\]/).pop();
+
+    // Determine which directory this reorder is happening in.
+    // For now we handle root-level reordering. Items at the same
+    // level share a dirKey.
+    // TODO: extend to subfolders by detecting common parent
+    const dirKey = '_root';
+
+    // Get current order
+    const result = await this.fileService.listFiles();
+    if (!result.success) return;
+
+    const savedOrder = await this.fileService.getSortOrder(dirKey);
+    let names = savedOrder && Array.isArray(savedOrder)
+      ? savedOrder
+      : result.files.map(f => f.name);
+
+    // If dragged item isn't in this list, it might be moving from a subfolder
+    if (!names.includes(draggedName)) {
+      // This is a move-to-root + reorder — do the filesystem move first
+      const moveResult = await this.fileService.moveFile(draggedPath, null);
+      if (!moveResult.success) return;
+      // Refresh the names list
+      const freshResult = await this.fileService.listFiles();
+      if (freshResult.success) {
+        names = freshResult.files.map(f => f.name);
+      }
     }
+
+    // Remove dragged item from current position
+    const newOrder = names.filter(n => n !== draggedName);
+
+    // Find where to insert
+    let insertIndex = newOrder.indexOf(refName);
+    if (insertIndex === -1) {
+      insertIndex = newOrder.length;
+    } else if (position === 'after') {
+      insertIndex += 1;
+    }
+
+    newOrder.splice(insertIndex, 0, draggedName);
+
+    await this.fileService.setSortOrder(dirKey, newOrder);
+    this.loadFileStructure();
   }
 
   async handleItemDrop(sourcePath, targetPath) {
@@ -277,7 +214,6 @@ export class FolderTreeComponent {
       console.log('Item dropped:', sourcePath, 'to', targetPath);
 
       const result = await this.fileService.moveFile(sourcePath, targetPath);
-
       if (result.success) {
         this.editorComponent.updateFilePath(sourcePath, result.newPath);
         this.loadFileStructure();
