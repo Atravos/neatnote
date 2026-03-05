@@ -248,36 +248,51 @@ export class FolderTreeComponent {
         // Notify editor of the path change
         this.editorComponent.updateFilePath(sourcePath, result.newPath);
         
-        // IMPORTANT: Update any cached paths or references to the moved file
-        // For example, if the dropped element is cached somewhere, update its path
-        
         // Refresh the file structure
         this.loadFileStructure();
       } else {
         console.error('Failed to move file:', result.error);
-        alert(`Failed to move file: ${result.error}`);
       }
     } catch (error) {
       console.error('Error in handleItemDrop:', error);
-      alert(`Error moving file: ${error.message}`);
     }
   }
 
   /**
-   * Get currently selected folder
+   * Get currently selected folder path.
+   * Returns null if nothing is selected or the selected element
+   * is no longer in the DOM (e.g. after a refresh/delete).
    * @returns {string|null} Path of selected folder or null
    */
   getSelectedFolderPath() {
     if (this.selectedFolder) {
+      // Check that the element is still in the document —
+      // if the tree was re-rendered, the old element is detached.
+      if (!document.contains(this.selectedFolder)) {
+        this.selectedFolder = null;
+        return null;
+      }
       return this.selectedFolder.getAttribute('data-path');
     }
     return null;
   }
 
   /**
+   * Clear the selected folder reference
+   */
+  clearSelection() {
+    this.selectedFolder = null;
+    document.querySelectorAll('.folder.selected').forEach(el => {
+      el.classList.remove('selected');
+    });
+  }
+
+  /**
    * Refresh the folder tree
    */
   refresh() {
+    // Clear selection so stale paths from deleted items aren't reused
+    this.clearSelection();
     this.loadFileStructure();
   }
 }

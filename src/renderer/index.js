@@ -82,13 +82,22 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('new-folder-btn').addEventListener('click', () => {
     modalComponent.show('Enter folder name', (name) => {
       if (name) {
-        // Get selected folder path or null for root
         const parentPath = folderTreeComponent.getSelectedFolderPath();
         fileService.createFolder(name, parentPath).then(result => {
           if (result.success) {
             folderTreeComponent.refresh();
           } else {
-            alert('Failed to create folder: ' + result.error);
+            // Re-show modal with error instead of native alert()
+            // which steals focus and breaks input on Windows
+            modalComponent.show('Folder already exists — enter a different name', (retryName) => {
+              if (retryName) {
+                fileService.createFolder(retryName, parentPath).then(retryResult => {
+                  if (retryResult.success) {
+                    folderTreeComponent.refresh();
+                  }
+                });
+              }
+            });
           }
         });
       }
@@ -99,14 +108,23 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('new-file-btn').addEventListener('click', () => {
     modalComponent.show('Enter file name', (name) => {
       if (name) {
-        // Get selected folder path or null for root
         const parentPath = folderTreeComponent.getSelectedFolderPath();
         fileService.createFile(name, parentPath).then(result => {
           if (result.success) {
             folderTreeComponent.refresh();
             editorComponent.openFile(result.path);
           } else {
-            alert('Failed to create file: ' + result.error);
+            // Re-show modal with error instead of native alert()
+            modalComponent.show('File already exists — enter a different name', (retryName) => {
+              if (retryName) {
+                fileService.createFile(retryName, parentPath).then(retryResult => {
+                  if (retryResult.success) {
+                    folderTreeComponent.refresh();
+                    editorComponent.openFile(retryResult.path);
+                  }
+                });
+              }
+            });
           }
         });
       }
