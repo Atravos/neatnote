@@ -28,11 +28,12 @@ export class ModalComponent {
       // Cancel button closes the modal
       if (this.elements.cancelButton) {
         this.elements.cancelButton.onclick = () => {
+          const callback = this.currentCallback;
+          const mode = this.mode;
           this.hide();
           // For confirm mode, call callback with false
-          if (this.mode === 'confirm' && this.currentCallback) {
-            this.currentCallback(false);
-            this.currentCallback = null;
+          if (mode === 'confirm' && callback) {
+            callback(false);
           }
         };
       }
@@ -40,18 +41,17 @@ export class ModalComponent {
       // Confirm button calls the callback with the input value
       if (this.elements.confirmButton) {
         this.elements.confirmButton.onclick = () => {
+          const callback = this.currentCallback;
           if (this.mode === 'confirm') {
             this.hide();
-            if (this.currentCallback) {
-              this.currentCallback(true);
-              this.currentCallback = null;
+            if (callback) {
+              callback(true);
             }
           } else {
             const value = this.elements.modalInput.value.trim();
             this.hide();
-            if (this.currentCallback) {
-              this.currentCallback(value);
-              this.currentCallback = null;
+            if (callback) {
+              callback(value);
             }
           }
         };
@@ -63,10 +63,10 @@ export class ModalComponent {
           if (event.key === 'Enter') {
             if (this.mode === 'input') {
               const value = this.elements.modalInput.value.trim();
+              const callback = this.currentCallback;
               this.hide();
-              if (this.currentCallback) {
-                this.currentCallback(value);
-                this.currentCallback = null;
+              if (callback) {
+                callback(value);
               }
             }
           }
