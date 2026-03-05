@@ -16,7 +16,6 @@ export class FolderTreeComponent {
     this.fileService = fileService;
     this.editorComponent = editorComponent;
     this.dragDropService = dragDropService;
-    this.selectedFolder = null;
     
     this.loadFileStructure();
     console.log('Folder tree component initialized');
@@ -52,7 +51,6 @@ export class FolderTreeComponent {
     try {
       console.log('Rendering file tree with', items?.length, 'items');
       
-      // Clear the container first
       if (container) {
         container.innerHTML = '';
       } else {
@@ -83,54 +81,49 @@ export class FolderTreeComponent {
    * @param {HTMLElement} container - Container element
    */
   createFolderElement(item, container) {
-    // Create folder element
     const folderElement = document.createElement('div');
     folderElement.className = 'folder';
     folderElement.setAttribute('data-path', item.path);
     
-    // Create toggle element
     const toggleElement = document.createElement('span');
     toggleElement.className = 'folder-toggle';
     
-    // Create icon with SVG
     const iconElement = document.createElement('span');
     iconElement.className = 'folder-icon';
     iconElement.innerHTML = icons.folder;
     
-    // Create folder name element
     const nameElement = document.createElement('span');
     nameElement.className = 'folder-name';
     nameElement.textContent = item.name;
     
-    // Add elements to folder
     folderElement.appendChild(toggleElement);
     folderElement.appendChild(iconElement);
     folderElement.appendChild(nameElement);
     
-    // Create container for folder contents
+    // Container for folder contents
     const folderContent = document.createElement('div');
     folderContent.className = 'folder-content';
     folderContent.style.display = 'none';
     
-    // Toggle only when clicking the toggle element
-    toggleElement.addEventListener('click', (e) => {
+    // Track whether contents have been loaded from disk
+    let contentsLoaded = false;
+    
+    // Clicking the folder row toggles open/close (no selection)
+    folderElement.addEventListener('click', async (e) => {
       e.stopPropagation();
       this.toggleFolder(folderElement);
-    });
-    
-    // Select folder on click
-    folderElement.addEventListener('click', (e) => {
-      e.stopPropagation();
       
-      // Toggle selected class
-      document.querySelectorAll('.folder.selected').forEach(el => {
-        el.classList.remove('selected');
-      });
-      folderElement.classList.add('selected');
-      this.selectedFolder = folderElement;
+      // Lazy-load contents on first expand
+      if (!contentsLoaded) {
+        contentsLoaded = true;
+        const subItems = await this.fileService.listFiles(item.path);
+        if (subItems.success) {
+          this.renderFileTree(subItems.files, folderContent);
+        }
+      }
     });
     
-    // Make folder a drop target for drag and drop
+    // Make folder a drop target
     this.dragDropService.makeDropTarget(
       folderElement, 
       item.path,
@@ -139,16 +132,6 @@ export class FolderTreeComponent {
     
     // Make folder draggable
     this.dragDropService.makeDraggable(folderElement, item.path);
-    
-    // Load folder contents on first expand
-    toggleElement.addEventListener('click', async () => {
-      if (folderContent.children.length === 0) {
-        const subItems = await this.fileService.listFiles(item.path);
-        if (subItems.success) {
-          this.renderFileTree(subItems.files, folderContent);
-        }
-      }
-    }, { once: true });
     
     container.appendChild(folderElement);
     container.appendChild(folderContent);
@@ -160,31 +143,25 @@ export class FolderTreeComponent {
    * @param {HTMLElement} container - Container element
    */
   createFileElement(item, container) {
-    // Create file element
     const fileElement = document.createElement('div');
     fileElement.className = 'file';
     fileElement.setAttribute('data-path', item.path);
     
-    // Create icon with SVG
     const iconElement = document.createElement('span');
     iconElement.className = 'file-icon';
     iconElement.innerHTML = icons.file;
     
-    // Create file name element
     const nameElement = document.createElement('span');
     nameElement.className = 'file-name';
     nameElement.textContent = item.name;
     
-    // Add elements to file
     fileElement.appendChild(iconElement);
     fileElement.appendChild(nameElement);
     
-    // Add click listener to open file
     fileElement.addEventListener('click', () => {
       this.editorComponent.openFile(item.path);
     });
     
-    // Make file draggable
     this.dragDropService.makeDraggable(fileElement, item.path);
     
     container.appendChild(fileElement);
@@ -214,7 +191,8 @@ export class FolderTreeComponent {
   }
 
   /**
-   * Set up the root folder tree as a drop target
+   * Set up the root folder tree as a drop target.
+   * Dropping here moves items to the root notes directory.
    * @param {HTMLElement} folderTreeElement - Folder tree element
    */
   setupRootDropTarget(folderTreeElement) {
@@ -223,7 +201,7 @@ export class FolderTreeComponent {
       
       this.dragDropService.makeDropTarget(
         folderTreeElement,
-        null, // null target path means root directory
+        null,
         (sourcePath, targetPath) => this.handleItemDrop(sourcePath, targetPath)
       );
       
@@ -245,10 +223,7 @@ export class FolderTreeComponent {
       const result = await this.fileService.moveFile(sourcePath, targetPath);
       
       if (result.success) {
-        // Notify editor of the path change
         this.editorComponent.updateFilePath(sourcePath, result.newPath);
-        
-        // Refresh the file structure
         this.loadFileStructure();
       } else {
         console.error('Failed to move file:', result.error);
@@ -259,40 +234,9 @@ export class FolderTreeComponent {
   }
 
   /**
-   * Get currently selected folder path.
-   * Returns null if nothing is selected or the selected element
-   * is no longer in the DOM (e.g. after a refresh/delete).
-   * @returns {string|null} Path of selected folder or null
-   */
-  getSelectedFolderPath() {
-    if (this.selectedFolder) {
-      // Check that the element is still in the document —
-      // if the tree was re-rendered, the old element is detached.
-      if (!document.contains(this.selectedFolder)) {
-        this.selectedFolder = null;
-        return null;
-      }
-      return this.selectedFolder.getAttribute('data-path');
-    }
-    return null;
-  }
-
-  /**
-   * Clear the selected folder reference
-   */
-  clearSelection() {
-    this.selectedFolder = null;
-    document.querySelectorAll('.folder.selected').forEach(el => {
-      el.classList.remove('selected');
-    });
-  }
-
-  /**
    * Refresh the folder tree
    */
   refresh() {
-    // Clear selection so stale paths from deleted items aren't reused
-    this.clearSelection();
     this.loadFileStructure();
   }
 }

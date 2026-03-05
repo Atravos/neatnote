@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize modal component
   const modalComponent = new ModalComponent(modalElements);
   
-  // Initialize trash component — pass modalComponent to avoid native confirm()
+  // Initialize trash component
   const trashComponent = new TrashComponent(
     document.getElementById('trash-container'),
     fileService,
@@ -78,20 +78,18 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize settings component
   const settingsComponent = new SettingsComponent(settingsElements, themeService);
   
-  // Set up new folder button
+  // New Folder — always creates at root level.
+  // To nest folders, drag them into a parent folder after creating.
   document.getElementById('new-folder-btn').addEventListener('click', () => {
     modalComponent.show('Enter folder name', (name) => {
       if (name) {
-        const parentPath = folderTreeComponent.getSelectedFolderPath();
-        fileService.createFolder(name, parentPath).then(result => {
+        fileService.createFolder(name, null).then(result => {
           if (result.success) {
             folderTreeComponent.refresh();
           } else {
-            // Re-show modal with error instead of native alert()
-            // which steals focus and breaks input on Windows
             modalComponent.show('Folder already exists — enter a different name', (retryName) => {
               if (retryName) {
-                fileService.createFolder(retryName, parentPath).then(retryResult => {
+                fileService.createFolder(retryName, null).then(retryResult => {
                   if (retryResult.success) {
                     folderTreeComponent.refresh();
                   }
@@ -104,20 +102,19 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
   
-  // Set up new file button
+  // New File — always creates at root level.
+  // To nest files, drag them into a folder after creating.
   document.getElementById('new-file-btn').addEventListener('click', () => {
     modalComponent.show('Enter file name', (name) => {
       if (name) {
-        const parentPath = folderTreeComponent.getSelectedFolderPath();
-        fileService.createFile(name, parentPath).then(result => {
+        fileService.createFile(name, null).then(result => {
           if (result.success) {
             folderTreeComponent.refresh();
             editorComponent.openFile(result.path);
           } else {
-            // Re-show modal with error instead of native alert()
             modalComponent.show('File already exists — enter a different name', (retryName) => {
               if (retryName) {
-                fileService.createFile(retryName, parentPath).then(retryResult => {
+                fileService.createFile(retryName, null).then(retryResult => {
                   if (retryResult.success) {
                     folderTreeComponent.refresh();
                     editorComponent.openFile(retryResult.path);
