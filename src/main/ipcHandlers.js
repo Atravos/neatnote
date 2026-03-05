@@ -5,9 +5,10 @@ const processManager = require('./processManager');
 /**
  * Set up all IPC handlers for file system operations
  * @param {Electron.App} app - Electron app instance
+ * @param {Object} store - electron-store instance
  * @returns {Object} Object with cleanup function
  */
-function setupIpcHandlers(app) {
+function setupIpcHandlers(app, store) {
   console.log('Setting up IPC handlers');
   
   // Track active handlers for cleanup
@@ -18,7 +19,9 @@ function setupIpcHandlers(app) {
     'save-file',
     'list-files',
     'move-file',
-    'delete-item'
+    'delete-item',
+    'get-sort-order',
+    'set-sort-order'
   ];
   
   // Handler for creating folders
@@ -63,9 +66,32 @@ function setupIpcHandlers(app) {
     return fileSystem.deleteItem(itemPath);
   });
 
+  // Handler for getting sort order for a directory
+  ipcMain.handle('get-sort-order', async (event, dirKey) => {
+    try {
+      const key = `sortOrder.${dirKey || '_root'}`;
+      const order = store.get(key, null);
+      return { success: true, order };
+    } catch (error) {
+      console.error('Error getting sort order:', error);
+      return { success: true, order: null };
+    }
+  });
+
+  // Handler for setting sort order for a directory
+  ipcMain.handle('set-sort-order', async (event, dirKey, order) => {
+    try {
+      const key = `sortOrder.${dirKey || '_root'}`;
+      store.set(key, order);
+      return { success: true };
+    } catch (error) {
+      console.error('Error setting sort order:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
   console.log('All IPC handlers registered');
   
-  // Return cleanup function
   return {
     cleanup: () => {
       console.log('Cleaning up IPC handlers');

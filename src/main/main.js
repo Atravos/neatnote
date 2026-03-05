@@ -40,7 +40,7 @@ app.whenReady().then(() => {
   createWindow();
   
   // Set up all IPC handlers
-  const handlers = setupIpcHandlers(app);
+  const handlers = setupIpcHandlers(app, store);
   ipcHandlersCleanup = handlers.cleanup;
   
   // Register IPC handlers for cleanup
