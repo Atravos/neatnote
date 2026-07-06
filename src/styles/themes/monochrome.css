@@ -1,0 +1,9 @@
+/* Monochrome theme variables */
+.app-theme-monochrome {
+    --bg-color: #ffffff;
+    --sidebar-bg: #f0f0f0;
+    --text-color: #333333;
+    --border-color: #d6d6d6;
+    --hover-color: #e8e8e8;
+    --accent-color: #5a5a5a;
+  }

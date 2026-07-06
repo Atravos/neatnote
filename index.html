@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>NeatNote</title>
+  <link rel="stylesheet" href="src/styles/main.css">
+</head>
+<body>
+  <div class="app-container">
+    <div class="sidebar">
+      <div class="app-title">
+        <h1>NeatNote</h1>
+        <div id="settings-icon" class="settings-icon" title="Settings">
+          <!-- SVG will be inserted by JavaScript -->
+        </div>
+      </div>
+      <div class="sidebar-header">
+        <button id="new-folder-btn">
+          <span class="btn-icon">+</span> New Folder
+        </button>
+        <button id="new-file-btn">
+          <span class="btn-icon">+</span> New File
+        </button>
+      </div>
+      <div class="search-container">
+        <input type="text" id="search-input" class="search-input" placeholder="Search notes..." autocomplete="off">
+      </div>
+      <div id="folder-tree" class="folder-tree"></div>
+      <div id="trash-container" class="trash-container">
+        <div class="trash-icon"></div>
+        <div class="trash-label">Drag here to delete</div>
+      </div>
+    </div>
+    <div class="editor-container">
+      <div class="editor-header">
+        <span id="current-file-path"></span>
+        <button id="save-btn">Save</button>
+      </div>
+      <textarea id="editor" placeholder="Start typing..."></textarea>
+      <div class="editor-footer">
+        <span id="word-count"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Modal Dialog for creating folder/file -->
+  <div id="modal-overlay" class="modal-overlay">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 id="modal-title">Enter name</h3>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="modal-input" placeholder="Name">
+      </div>
+      <div class="modal-footer">
+        <button id="modal-cancel-btn">Cancel</button>
+        <button id="modal-confirm-btn">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal Dialog -->
+  <div id="settings-overlay" class="modal-overlay">
+    <div class="modal-container settings-container">
+      <div class="modal-header">
+        <h3>Settings</h3>
+      </div>
+      <div class="modal-body">
+        <div class="settings-section">
+          <h4>Theme</h4>
+          <div class="theme-options">
+            <div class="theme-option theme-light" data-theme="light">
+              <div class="theme-preview">
+                <div class="theme-preview-sidebar"></div>
+                <div class="theme-preview-content"></div>
+              </div>
+              <div class="theme-label">Light</div>
+            </div>
+            <div class="theme-option theme-dark" data-theme="dark">
+              <div class="theme-preview">
+                <div class="theme-preview-sidebar"></div>
+                <div class="theme-preview-content"></div>
+              </div>
+              <div class="theme-label">Dark</div>
+            </div>
+            <div class="theme-option theme-blue" data-theme="blue">
+              <div class="theme-preview">
+                <div class="theme-preview-sidebar"></div>
+                <div class="theme-preview-content"></div>
+              </div>
+              <div class="theme-label">Blue</div>
+            </div>
+            <div class="theme-option theme-sepia" data-theme="sepia">
+              <div class="theme-preview">
+                <div class="theme-preview-sidebar"></div>
+                <div class="theme-preview-content"></div>
+              </div>
+              <div class="theme-label">Sepia</div>
+            </div>
+            <div class="theme-option theme-forest" data-theme="forest">
+              <div class="theme-preview">
+                <div class="theme-preview-sidebar"></div>
+                <div class="theme-preview-content"></div>
+              </div>
+              <div class="theme-label">Forest</div>
+            </div>
+            <div class="theme-option theme-purple" data-theme="purple">
+              <div class="theme-preview">
+                <div class="theme-preview-sidebar"></div>
+                <div class="theme-preview-content"></div>
+              </div>
+              <div class="theme-label">Purple</div>
+            </div>
+            <div class="theme-option theme-ocean" data-theme="ocean">
+              <div class="theme-preview">
+                <div class="theme-preview-sidebar"></div>
+                <div class="theme-preview-content"></div>
+              </div>
+              <div class="theme-label">Ocean</div>
+            </div>
+            <div class="theme-option theme-autumn" data-theme="autumn">
+              <div class="theme-preview">
+                <div class="theme-preview-sidebar"></div>
+                <div class="theme-preview-content"></div>
+              </div>
+              <div class="theme-label">Autumn</div>
+            </div>
+            <div class="theme-option theme-terminal" data-theme="terminal">
+              <div class="theme-preview">
+                <div class="theme-preview-sidebar"></div>
+                <div class="theme-preview-content"></div>
+              </div>
+              <div class="theme-label">Terminal</div>
+            </div>
+            <div class="theme-option theme-monochrome" data-theme="monochrome">
+              <div class="theme-preview">
+                <div class="theme-preview-sidebar"></div>
+                <div class="theme-preview-content"></div>
+              </div>
+              <div class="theme-label">Mono</div>
+            </div>
+            <div class="theme-option theme-highcontrast" data-theme="highcontrast">
+              <div class="theme-preview">
+                <div class="theme-preview-sidebar"></div>
+                <div class="theme-preview-content"></div>
+              </div>
+              <div class="theme-label">Contrast</div>
+            </div>
+            <div class="theme-option theme-pastel" data-theme="pastel">
+              <div class="theme-preview">
+                <div class="theme-preview-sidebar"></div>
+                <div class="theme-preview-content"></div>
+              </div>
+              <div class="theme-label">Pastel</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="settings-close-btn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="src/renderer/index.js"></script>
+</body>
+</html>

@@ -1,0 +1,276 @@
+/* Sidebar styling */
+.sidebar {
+    width: 260px;
+    background-color: var(--sidebar-bg);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: background-color 0.3s ease;
+  }
+  
+  .sidebar-header {
+    padding: 12px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .sidebar-header button {
+    padding: 8px 12px;
+    background-color: var(--hover-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+    color: var(--text-color);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  
+  .sidebar-header button:hover {
+    background-color: var(--hover-color);
+    transform: translateY(-1px);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  }
+  
+  .btn-icon {
+    font-size: 14px;
+    font-weight: bold;
+  }
+  
+  /* Folder tree container */
+  .folder-tree {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    background-color: var(--sidebar-bg);
+  }
+  
+  /* Folder and file styling */
+  .folder, .file {
+    margin: 2px 0;
+    padding: 6px 8px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background-color 0.15s;
+    display: flex;
+    align-items: center;
+    font-size: 13px;
+    user-select: none;
+  }
+  
+  .folder:hover, .file:hover {
+    background-color: var(--hover-color);
+  }
+  
+  /* Toggle for folders */
+  .folder-toggle {
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+    margin-right: 4px;
+    color: #666;
+    font-size: 10px;
+  }
+  
+  .folder-toggle::before {
+    content: "▶";
+    display: block;
+    transition: transform 0.2s;
+  }
+  
+  .folder-open .folder-toggle::before {
+    transform: rotate(90deg);
+  }
+  
+  /* Folder icon */
+  .folder-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    margin-right: 6px;
+  }
+  
+  .folder-icon svg {
+    width: 18px;
+    height: 18px;
+    fill: #5f6368;
+  }
+  
+  .folder-open .folder-icon svg {
+    fill: var(--accent-color);
+  }
+  
+  /* File icon */
+  .file-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    margin-right: 6px;
+    margin-left: 20px;
+  }
+  
+  .file-icon svg {
+    width: 16px;
+    height: 16px;
+    fill: #5f6368;
+  }
+  
+  .file:hover .file-icon svg {
+    fill: #455a64;
+  }
+  
+  .folder-name, .file-name {
+    font-weight: 400;
+    color: var(--text-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .folder-content {
+    margin-left: 15px;
+    position: relative;
+  }
+  
+  .folder-content::before {
+    content: "";
+    position: absolute;
+    left: -8px;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background-color: var(--border-color);
+    opacity: 0.8;
+  }
+  
+  /* ===== Drag and drop styles ===== */
+  
+  /* Item being dragged */
+  .dragging {
+    opacity: 0.4;
+  }
+  
+  /* Single indicator line — positioned absolutely by JS */
+  .drop-indicator {
+    position: fixed;
+    height: 2px;
+    background-color: var(--accent-color, #1a73e8);
+    border-radius: 2px;
+    pointer-events: none;
+    z-index: 10000;
+    opacity: 0;
+    transition: opacity 0.1s;
+    box-shadow: 0 0 6px rgba(26, 115, 232, 0.5);
+  }
+  
+  .drop-indicator.visible {
+    opacity: 1;
+  }
+  
+  /* Folder highlighted as a drop target (move-into zone) */
+  .drop-target-highlight {
+    background-color: rgba(26, 115, 232, 0.12) !important;
+    outline: 2px solid var(--accent-color, #1a73e8);
+    outline-offset: -2px;
+    border-radius: 6px;
+  }
+  
+  /* ===== Trash ===== */
+  .trash-container {
+    padding: 14px 10px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background-color: var(--sidebar-bg);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .trash-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+  }
+  
+  .trash-icon svg {
+    width: 20px;
+    height: 20px;
+    fill: #5f6368;
+  }
+  
+  .trash-label {
+    font-size: 12px;
+    color: var(--text-color);
+  }
+  
+  .trash-container:hover {
+    background-color: #feeae6;
+  }
+  
+  .trash-container:hover .trash-icon svg {
+    fill: #e53935;
+  }
+  
+  .trash-container.drag-over {
+    background-color: #ffebee;
+    outline: 2px dashed #e53935;
+    outline-offset: -2px;
+  }
+  
+  .trash-container.drag-over .trash-icon {
+    transform: scale(1.2);
+    transition: transform 0.2s;
+  }
+  
+  .trash-container.drag-over .trash-icon svg {
+    fill: #e53935;
+  }
+  
+  .trash-container.confirm {
+    background-color: #ffcdd2;
+  }
+/* Search box above the folder tree */
+.search-container {
+  padding: 8px 12px 4px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 6px 10px;
+  font-size: 13px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  outline: none;
+}
+
+.search-input:focus {
+  border-color: var(--accent-color);
+}
+
+.search-empty {
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--text-color);
+  opacity: 0.6;
+}
