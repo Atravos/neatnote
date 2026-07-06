@@ -1,0 +1,9 @@
+/* Ocean theme variables */
+.app-theme-ocean {
+    --bg-color: #f3f9fc;
+    --sidebar-bg: #e7f5fb;
+    --text-color: #2e5677;
+    --border-color: #bde0f1;
+    --hover-color: #d0e9f5;
+    --accent-color: #0077b6;
+  }

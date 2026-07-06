@@ -1,0 +1,328 @@
+/* Editor section */
+.editor-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  
+  /* Quill mount point — becomes .ql-container at runtime */
+  #editor {
+    flex: 1;
+    width: 100%;
+    min-height: 0; /* allow the flex child to shrink so .ql-editor scrolls */
+    border: none;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-size: 16px;
+  }
+  
+  .editor-header {
+    padding: 12px 16px;
+    background-color: var(--hover-color);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  #current-file-path {
+    font-size: 13px;
+    color: var(--text-color);
+  }
+  
+  #save-btn {
+    padding: 6px 14px;
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+  }
+  
+  #save-btn:hover {
+    background-color: var(--accent-color);
+    opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Auto-save indicator */
+  #auto-save-container {
+    display: flex;
+    align-items: center;
+    margin-right: 10px;
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+  
+  #auto-save-container.visible {
+    opacity: 1;
+  }
+  
+  #status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #4CAF50; /* Green for saved */
+    margin-right: 6px;
+    transition: background-color 0.3s, box-shadow 0.3s;
+  }
+  
+  #status-dot.status-saving {
+    background-color: #FF9800;
+    box-shadow: 0 0 5px #FF9800;
+    animation: pulse 1s infinite;
+  }
+  
+  #status-dot.status-saved {
+    background-color: #4CAF50;
+    box-shadow: 0 0 5px #4CAF50;
+    animation: none;
+  }
+  
+  #status-dot.status-error {
+    background-color: #F44336;
+    box-shadow: 0 0 5px #F44336;
+    animation: none;
+  }
+  
+  #auto-save-indicator {
+    font-size: 12px;
+    color: #5f6368;
+  }
+  
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+  }
+  
+  /* Editor footer: word/character count */
+  .editor-footer {
+    padding: 6px 16px;
+    border-top: 1px solid var(--border-color);
+    background-color: var(--hover-color);
+    display: flex;
+    justify-content: flex-end;
+  }
+  
+  #word-count {
+    font-size: 12px;
+    color: var(--text-color);
+    opacity: 0.7;
+  }
+
+/* ===========================================================================
+   Rich text editor (Quill 2)
+   Toolbar chrome + content typography. Everything derives from the theme
+   variables so all 12 themes work without per-theme rules.
+   =========================================================================== */
+
+/* --- Formatting toolbar --------------------------------------------------- */
+
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 6px 12px;
+  background-color: var(--hover-color);
+  border-bottom: 1px solid var(--border-color);
+  user-select: none;
+}
+
+.toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-color);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s, opacity 0.15s;
+}
+
+.toolbar-btn svg {
+  width: 18px;
+  height: 18px;
+  pointer-events: none;
+}
+
+.toolbar-btn:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--text-color) 10%, transparent);
+}
+
+.toolbar-btn:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 1px;
+}
+
+/* Active format state (applied by Quill's toolbar module) */
+.toolbar-btn.ql-active {
+  color: var(--accent-color);
+  background-color: color-mix(in srgb, var(--accent-color) 14%, transparent);
+}
+
+.toolbar-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.toolbar-separator {
+  width: 1px;
+  height: 20px;
+  margin: 0 6px;
+  background-color: var(--border-color);
+}
+
+/* Badge shown while a legacy .txt (plain text) note is open */
+.plain-text-badge {
+  display: none;
+  margin-left: auto;
+  padding: 2px 8px;
+  font-size: 11px;
+  letter-spacing: 0.3px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  color: var(--text-color);
+  opacity: 0.75;
+  cursor: help;
+}
+
+.plain-text-badge.visible {
+  display: inline-block;
+}
+
+.editor-toolbar.toolbar-disabled .toolbar-btn {
+  pointer-events: none;
+}
+
+/* --- Editor content: "feels like writing" typography ---------------------- */
+
+#editor .ql-editor {
+  /* Readable serif stack with universal fallbacks */
+  font-family: Charter, 'Bitstream Charter', 'Iowan Old Style', Georgia,
+    Cambria, 'Times New Roman', serif;
+  font-size: 16.5px;
+  line-height: 1.65;
+  color: var(--text-color);
+  /* Comfortable page-like column, centered when the window is wide */
+  padding: 32px max(28px, calc((100% - 760px) / 2)) 96px;
+  overflow-y: auto;
+  caret-color: var(--accent-color);
+}
+
+/* Placeholder */
+#editor .ql-editor.ql-blank::before {
+  color: var(--text-color);
+  opacity: 0.45;
+  font-style: italic;
+  left: max(28px, calc((100% - 760px) / 2));
+  right: max(28px, calc((100% - 760px) / 2));
+}
+
+/* Paragraph spacing */
+#editor .ql-editor p {
+  margin-bottom: 0.65em;
+}
+
+/* Headings: clear visual hierarchy */
+#editor .ql-editor h1,
+#editor .ql-editor h2,
+#editor .ql-editor h3 {
+  font-family: inherit;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--text-color);
+  margin-top: 1.3em;
+  margin-bottom: 0.45em;
+}
+
+#editor .ql-editor h1 { font-size: 1.9em; }
+#editor .ql-editor h2 { font-size: 1.5em; }
+#editor .ql-editor h3 { font-size: 1.2em; }
+
+#editor .ql-editor h1:first-child,
+#editor .ql-editor h2:first-child,
+#editor .ql-editor h3:first-child {
+  margin-top: 0;
+}
+
+/* Lists: proper indentation and item breathing room.
+   (Quill 2 renders all lists as <ol> with data-list attributes;
+   its core CSS supplies the counters/markers.) */
+#editor .ql-editor ol,
+#editor .ql-editor ul {
+  margin-bottom: 0.65em;
+  padding-left: 1.6em;
+}
+
+#editor .ql-editor li {
+  margin-bottom: 0.25em;
+}
+
+#editor .ql-editor li::before {
+  color: var(--text-color);
+  opacity: 0.85;
+}
+
+/* Blockquote */
+#editor .ql-editor blockquote {
+  border-left: 3px solid var(--accent-color);
+  margin: 0.9em 0;
+  padding: 0.2em 0 0.2em 1em;
+  opacity: 0.9;
+  font-style: italic;
+}
+
+/* Code block (Quill 2 wraps lines in .ql-code-block-container) */
+#editor .ql-editor .ql-code-block-container {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas,
+    'Liberation Mono', monospace;
+  font-size: 0.85em;
+  line-height: 1.55;
+  background-color: var(--hover-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin: 0.9em 0;
+  overflow-x: auto;
+}
+
+/* Inline code */
+#editor .ql-editor code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas,
+    'Liberation Mono', monospace;
+  font-size: 0.85em;
+  background-color: var(--hover-color);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+}
+
+/* Horizontal rule */
+#editor .ql-editor hr {
+  border: none;
+  border-top: 1px solid var(--border-color);
+  margin: 1.4em 0;
+}
+
+/* Links */
+#editor .ql-editor a {
+  color: var(--accent-color);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Selection tint that follows the theme accent */
+#editor .ql-editor ::selection,
+#editor .ql-editor::selection {
+  background-color: color-mix(in srgb, var(--accent-color) 25%, transparent);
+}

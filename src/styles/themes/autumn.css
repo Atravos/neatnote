@@ -1,0 +1,9 @@
+/* Autumn theme variables */
+.app-theme-autumn {
+    --bg-color: #fdf8f2;
+    --sidebar-bg: #f8ede3;
+    --text-color: #774936;
+    --border-color: #e9d5c2;
+    --hover-color: #f2e6d8;
+    --accent-color: #c87941;
+  }
