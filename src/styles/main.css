@@ -1,0 +1,134 @@
+/* Main CSS file - Imports all other CSS files */
+@import 'variables.css';
+@import 'sidebar.css';
+@import 'editor.css';
+@import 'modals.css';
+@import 'toast.css';
+@import 'themes/light.css';
+@import 'themes/dark.css';
+@import 'themes/blue.css';
+@import 'themes/sepia.css';
+@import 'themes/forest.css';
+@import 'themes/purple.css';
+@import 'themes/ocean.css';
+@import 'themes/autumn.css';
+@import 'themes/terminal.css';
+@import 'themes/monochrome.css';
+@import 'themes/highcontrast.css';
+@import 'themes/pastel.css';
+
+/* Base styles for the entire application */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  height: 100vh;
+  overflow: hidden;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.app-container {
+  display: flex;
+  height: 100vh;
+}
+
+/* App title */
+.app-title {
+  padding: 14px 12px 10px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.app-title h1 {
+  font-size: 15px;
+  color: var(--text-color);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Small accent mark next to the app name — the brand accent, used once */
+.app-title h1::before {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  background-color: var(--accent-color);
+}
+
+/* Settings icon — themed (was hardcoded light-grey and broke on dark themes) */
+.settings-icon {
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  transition: background-color var(--t-fast) var(--ease),
+    color var(--t-fast) var(--ease),
+    transform var(--t-med) var(--ease);
+}
+
+.settings-icon svg {
+  width: 17px;
+  height: 17px;
+  fill: currentColor;
+}
+
+.settings-icon:hover {
+  background-color: var(--fill-hover);
+  color: var(--text-color);
+  transform: rotate(30deg);
+}
+
+/* Themed scrollbars — part of feeling like one product */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar);
+  border-radius: 6px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-clip: border-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Visible keyboard focus, themed */
+button:focus-visible,
+[tabindex]:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 1px;
+}
+
+/* Respect reduced-motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

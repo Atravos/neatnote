@@ -1,0 +1,9 @@
+/* Blue theme variables */
+.app-theme-blue {
+    --bg-color: #f8fbff;
+    --sidebar-bg: #e8f0fe;
+    --text-color: #3c4043;
+    --border-color: #c6dafc;
+    --hover-color: #d2e3fc;
+    --accent-color: #1a73e8;
+  }
