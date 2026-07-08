@@ -1,0 +1,260 @@
+/* ===========================================================================
+   Modals — dimmed, blurred backdrop, smooth open/close.
+   The overlay stays rendered (visibility toggles), so both the enter and
+   exit transitions play. isModalOpen() checks for .show — unchanged.
+   =========================================================================== */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  background-color: var(--backdrop);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 200ms var(--ease), visibility 200ms var(--ease);
+}
+
+.modal-overlay.show {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.modal-container {
+  background-color: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  width: 340px;
+  box-shadow: var(--shadow);
+  transform: translateY(10px) scale(0.97);
+  transition: transform 200ms var(--ease),
+    background-color var(--t-med) var(--ease),
+    border-color var(--t-med) var(--ease);
+}
+
+.modal-overlay.show .modal-container {
+  transform: translateY(0) scale(1);
+}
+
+.modal-header {
+  padding: 18px 20px 0;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.modal-body {
+  padding: 14px 20px 18px;
+}
+
+.modal-body input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 7px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  outline: none;
+  transition: border-color var(--t-fast) var(--ease),
+    box-shadow var(--t-fast) var(--ease);
+}
+
+.modal-body input:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.modal-footer {
+  padding: 0 20px 18px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.modal-footer button {
+  padding: 7px 16px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  font-weight: 500;
+  transition: background-color var(--t-fast) var(--ease),
+    color var(--t-fast) var(--ease),
+    border-color var(--t-fast) var(--ease);
+}
+
+#modal-cancel-btn {
+  background-color: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+}
+
+#modal-cancel-btn:hover {
+  background-color: var(--fill-hover);
+  color: var(--text-color);
+}
+
+#modal-confirm-btn, #settings-close-btn {
+  background-color: var(--accent-color);
+  color: var(--on-accent);
+  border: 1px solid transparent;
+}
+
+#modal-confirm-btn:hover, #settings-close-btn:hover {
+  background-color: color-mix(in srgb, var(--accent-color) 88%, var(--text-color));
+}
+
+/* Uninstall button (created by settings.js) */
+.danger-button {
+  padding: 7px 16px;
+  border: 1px solid var(--danger);
+  border-radius: 7px;
+  background-color: transparent;
+  color: var(--danger);
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--t-fast) var(--ease),
+    color var(--t-fast) var(--ease);
+}
+
+.danger-button:hover {
+  background-color: var(--danger);
+  color: #ffffff;
+}
+
+/* ---- Settings ------------------------------------------------------------- */
+
+.settings-container {
+  width: 420px;
+  max-width: calc(100vw - 48px);
+}
+
+.settings-section {
+  margin-bottom: 8px;
+}
+
+.settings-section + .settings-section {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.settings-section h4 {
+  margin: 0 0 10px 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+}
+
+/* Theme picker */
+.theme-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.theme-option {
+  width: 70px;
+  border-radius: 9px;
+  overflow: hidden;
+  border: 2px solid var(--border-color);
+  cursor: pointer;
+  transition: border-color var(--t-fast) var(--ease),
+    transform var(--t-fast) var(--ease),
+    box-shadow var(--t-fast) var(--ease);
+}
+
+.theme-option:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-small);
+}
+
+.theme-option.selected {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.theme-preview {
+  height: 48px;
+  display: flex;
+}
+
+.theme-preview-sidebar {
+  width: 30%;
+}
+
+.theme-preview-content {
+  width: 70%;
+  position: relative;
+}
+
+/* Tiny text line + accent dot make each swatch legible at a glance */
+.theme-preview-line {
+  position: absolute;
+  left: 7px;
+  top: 10px;
+  width: 24px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.theme-preview-dot {
+  position: absolute;
+  left: 7px;
+  bottom: 9px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.theme-label {
+  padding: 5px 0 6px;
+  text-align: center;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background-color: var(--surface);
+  transition: background-color var(--t-med) var(--ease);
+}
+
+/* Swatch colors (must match the palettes in themeService.js) */
+.theme-light .theme-preview-sidebar  { background-color: #f6f5f2; }
+.theme-light .theme-preview-content  { background-color: #ffffff; }
+.theme-light .theme-preview-line     { background-color: #d6d5d0; }
+.theme-light .theme-preview-dot      { background-color: #4263eb; }
+
+.theme-dark .theme-preview-sidebar   { background-color: #16181c; }
+.theme-dark .theme-preview-content   { background-color: #1c1e22; }
+.theme-dark .theme-preview-line      { background-color: #3b3f47; }
+.theme-dark .theme-preview-dot       { background-color: #7aa2f7; }
+
+.theme-paper .theme-preview-sidebar  { background-color: #f1eadb; }
+.theme-paper .theme-preview-content  { background-color: #faf6ec; }
+.theme-paper .theme-preview-line     { background-color: #ded4bc; }
+.theme-paper .theme-preview-dot      { background-color: #9c6b1e; }
+
+.theme-moss .theme-preview-sidebar   { background-color: #121814; }
+.theme-moss .theme-preview-content   { background-color: #181f1a; }
+.theme-moss .theme-preview-line      { background-color: #33403a; }
+.theme-moss .theme-preview-dot       { background-color: #7fc796; }
+
+.theme-dusk .theme-preview-sidebar   { background-color: #171520; }
+.theme-dusk .theme-preview-content   { background-color: #1d1b27; }
+.theme-dusk .theme-preview-line      { background-color: #3a3550; }
+.theme-dusk .theme-preview-dot       { background-color: #a78bfa; }

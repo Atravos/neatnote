@@ -1,0 +1,72 @@
+/* Main CSS file - Imports all other CSS files */
+@import 'variables.css';
+@import 'titlebar.css';
+@import 'sidebar.css';
+@import 'editor.css';
+@import 'modals.css';
+@import 'toast.css';
+
+/* Base styles for the entire application */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  -webkit-font-smoothing: antialiased;
+  /* Theme switching cross-fade */
+  transition: background-color var(--t-med) var(--ease),
+    color var(--t-med) var(--ease);
+}
+
+.app-container {
+  display: flex;
+  flex: 1;
+  min-height: 0; /* let children scroll instead of overflowing the window */
+}
+
+/* Themed scrollbars — part of feeling like one product */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar);
+  border-radius: 6px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-clip: border-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Visible keyboard focus, themed */
+button:focus-visible,
+[tabindex]:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 1px;
+}
+
+/* Respect reduced-motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,184 @@
+/* ===========================================================================
+   Custom titlebar (frameless window)
+   The whole bar is a drag region; buttons and the gear opt out.
+   Layout adapts to the platform via body.platform-mac / body.platform-win,
+   set by titlebar.js. All colors come from theme variables.
+   =========================================================================== */
+
+.titlebar {
+  position: relative;
+  height: 40px;
+  flex: 0 0 40px;
+  display: flex;
+  align-items: center;
+  background-color: var(--sidebar-bg);
+  border-bottom: 1px solid var(--border-color);
+  user-select: none;
+  transition: background-color var(--t-med) var(--ease),
+    border-color var(--t-med) var(--ease);
+}
+
+/* Drag region: an in-flow flex filler between the app label and the
+   right-side clusters. It never overlaps a button — on macOS, drag
+   regions are registered at the native window level, so overlapping a
+   no-drag button with a drag layer makes clicks unreliable. The filler
+   sits 4px below the top edge so the frameless window's top resize
+   handle stays grabbable. */
+.titlebar-drag {
+  order: 1;
+  flex: 1;
+  align-self: flex-end;
+  height: calc(100% - 4px);
+  -webkit-app-region: drag;
+}
+
+/* The app name area is also draggable (it's not interactive) */
+.titlebar-app {
+  order: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  gap: 8px;
+  padding: 0 14px;
+  pointer-events: none; /* let drags pass through the label */
+  -webkit-app-region: drag;
+}
+
+/* Small accent square — the one place the brand accent lives in the chrome */
+.titlebar-mark {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background-color: var(--accent-color);
+  transition: background-color var(--t-med) var(--ease);
+}
+
+.titlebar-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-color);
+}
+
+/* Actions sit right of the drag filler */
+.titlebar-actions {
+  order: 2;
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  -webkit-app-region: no-drag;
+}
+
+/* Settings gear (moved up from the old sidebar header) */
+.settings-icon {
+  -webkit-app-region: no-drag;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  transition: background-color var(--t-fast) var(--ease),
+    color var(--t-fast) var(--ease),
+    transform var(--t-med) var(--ease);
+}
+
+.settings-icon svg {
+  width: 17px;
+  height: 17px;
+  fill: currentColor;
+}
+
+.settings-icon:hover {
+  background-color: var(--fill-hover);
+  color: var(--text-color);
+  transform: rotate(30deg);
+}
+
+/* ---- Window controls ---------------------------------------------------- */
+
+.titlebar-controls {
+  order: 3;
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+  -webkit-app-region: no-drag;
+}
+
+/* Windows / Linux: 46px caption buttons on the far right */
+.titlebar-controls .win-control {
+  -webkit-app-region: no-drag;
+  width: 46px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  transition: background-color var(--t-fast) var(--ease),
+    color var(--t-fast) var(--ease);
+}
+
+.titlebar-controls .win-control svg {
+  width: 11px;
+  height: 11px;
+}
+
+.titlebar-controls .win-control:hover {
+  background-color: var(--fill-hover);
+  color: var(--text-color);
+}
+
+.titlebar-controls .win-control.win-close:hover {
+  background-color: #e81123;
+  color: #ffffff;
+}
+
+/* macOS: traffic lights on the left */
+body.platform-mac .titlebar-controls {
+  order: -1; /* move before the app label */
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px 0 14px;
+}
+
+.titlebar-controls .mac-control {
+  -webkit-app-region: no-drag;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  cursor: default;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(0, 0, 0, 0.55);
+  transition: filter var(--t-fast) var(--ease);
+}
+
+.titlebar-controls .mac-control svg {
+  width: 8px;
+  height: 8px;
+  opacity: 0;
+  transition: opacity var(--t-fast) var(--ease);
+}
+
+/* Symbols appear when the cluster is hovered, like native traffic lights */
+.titlebar-controls:hover .mac-control svg {
+  opacity: 1;
+}
+
+.titlebar-controls .mac-control:active {
+  filter: brightness(0.85);
+}
+
+.mac-control.mac-close    { background-color: #ff5f57; }
+.mac-control.mac-minimize { background-color: #febc2e; }
+.mac-control.mac-maximize { background-color: #28c840; }
