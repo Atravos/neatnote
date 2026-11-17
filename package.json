@@ -1,42 +1,71 @@
 {
   "name": "neatnote",
-  "version": "1.0.5",
-  "description": "A lightweight note-taking application",
+  "version": "1.1.0",
+  "description": "A lightweight, local-first note-taking application",
   "main": "src/main/main.js",
+  "homepage": "https://theneatnote.com",
+  "author": {
+    "name": "NeatNote",
+    "email": "theneatnoteapp@gmail.com"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "scripts": {
     "start": "electron .",
-    "prebuild:cleanup": "node build-cleanup.js",
-    "build": "npm run prebuild:cleanup && electron-builder",
-    "build:mac": "npm run prebuild:cleanup && electron-builder --mac",
-    "build:win": "npm run prebuild:cleanup && electron-builder --win",
-    "build:linux": "npm run prebuild:cleanup && electron-builder --linux"
+    "test": "node --test tests/unit/*.test.js",
+    "test:e2e": "electron tests/e2e/run.js",
+    "build": "electron-builder",
+    "build:mac": "electron-builder --mac",
+    "build:win": "electron-builder --win",
+    "build:linux": "electron-builder --linux"
   },
-  "author": "",
-  "license": "MIT",
+  "dependencies": {
+    "electron-store": "^8.1.0"
+  },
   "devDependencies": {
-    "electron": "^28.0.0",
-    "electron-builder": "^24.6.3",
-    "pkg": "^5.8.1"
+    "electron": "^45.3.3",
+    "electron-builder": "^26.18.0"
   },
   "build": {
-    "appId": "com.example.neatnote",
+    "appId": "com.neatnote.app",
     "productName": "NeatNote",
+    "copyright": "Copyright © NeatNote",
     "files": [
       "src/**/*",
       "assets/**/*",
+      "vendor/**/*",
       "index.html"
     ],
-    "extraResources": [
-      {
-        "from": "dist/cleanup.exe",
-        "to": "cleanup.exe",
-        "filter": [
-          "**/*"
-        ]
-      }
-    ],
+    "asar": true,
+    "publish": null,
+    "electronFuses": {
+      "runAsNode": false,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "onlyLoadAppFromAsar": true,
+      "resetAdHocDarwinSignature": true
+    },
     "mac": {
-      "category": "public.app-category.productivity"
+      "category": "public.app-category.productivity",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "NeatNote-${version}-${arch}.${ext}"
     },
     "win": {
       "target": [
@@ -52,7 +81,9 @@
       "target": [
         "AppImage",
         "deb"
-      ]
+      ],
+      "category": "Office",
+      "synopsis": "Lightweight local-first notes"
     },
     "nsis": {
       "oneClick": false,
@@ -62,11 +93,8 @@
       "createStartMenuShortcut": true,
       "shortcutName": "NeatNote",
       "uninstallDisplayName": "NeatNote",
-      "artifactName": "NeatNote-Setup-${version}.exe",
+      "artifactName": "NeatNote-Setup-${version}.${ext}",
       "include": "installer/win/custom-installer.nsh"
     }
-  },
-  "dependencies": {
-    "electron-store": "^8.1.0"
   }
 }

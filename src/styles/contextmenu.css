@@ -1,0 +1,81 @@
+/* ===========================================================================
+   Context menu (sidebar right-click) — same elevated surface as modals
+   =========================================================================== */
+
+.context-menu {
+  position: fixed;
+  z-index: 1500;
+  min-width: 190px;
+  max-width: 300px;
+  padding: 5px;
+  background-color: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: 9px;
+  box-shadow: var(--shadow-small);
+  outline: none;
+  user-select: none;
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-color);
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* The focused item is shown by its fill; no ring inside a menu.
+   (.context-menu prefix: must outrank button:focus-visible in main.css) */
+.context-menu .context-menu-item:hover,
+.context-menu .context-menu-item:focus,
+.context-menu .context-menu-item:focus-visible {
+  background-color: var(--fill-hover);
+  outline: none;
+}
+
+.context-menu-item:active {
+  background-color: var(--fill-active);
+}
+
+.context-menu .context-menu-item:disabled {
+  opacity: 0.4;
+  cursor: default;
+  background: transparent;
+}
+
+.context-menu-item.danger {
+  color: var(--danger);
+}
+
+.context-menu .context-menu-item.danger:hover,
+.context-menu .context-menu-item.danger:focus,
+.context-menu .context-menu-item.danger:focus-visible {
+  background-color: var(--danger-soft);
+}
+
+.context-menu-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.context-menu-hint {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.context-menu-separator {
+  height: 1px;
+  margin: 5px 6px;
+  background-color: var(--border-subtle);
+}

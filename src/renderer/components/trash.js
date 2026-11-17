@@ -1,64 +1,59 @@
 import { icons } from '../utils/icons.js';
+import { showToast } from '../services/toast.js';
 
 /**
- * TrashComponent - Manages the trash functionality
+ * TrashComponent - the trash target at the bottom of the sidebar.
+ *
+ * Drag a note or folder onto it, or click it (Enter/Space when focused)
+ * to trash the note that is currently open. Either way the item goes to
+ * the operating system's trash after a confirmation, so it can be
+ * restored. The actual delete flow lives in FolderTreeComponent so the
+ * Delete key and the context menu behave identically.
  */
 export class TrashComponent {
-  constructor(container, fileService, editorComponent, folderTreeComponent, dragDropService, modalComponent) {
+  constructor(container, editorComponent, folderTreeComponent, dragDropService) {
     this.container = container;
-    this.fileService = fileService;
     this.editorComponent = editorComponent;
     this.folderTreeComponent = folderTreeComponent;
     this.dragDropService = dragDropService;
-    this.modalComponent = modalComponent;
-    
+
     this.setupTrash();
-    console.log('Trash component initialized');
   }
 
   setupTrash() {
     if (!this.container) return;
-    
+
     const trashIconElement = this.container.querySelector('.trash-icon');
     if (trashIconElement) {
       trashIconElement.innerHTML = icons.trash;
     }
-    
-    // Use the new single-handler trash drop
+
     this.dragDropService.setupTrash(this.container, (sourcePath) => {
-      this.handleTrashDrop(sourcePath);
+      this.flash();
+      this.folderTreeComponent.requestDelete(sourcePath);
     });
-    
-    console.log('Trash container set up');
+
+    const trashOpenNote = () => {
+      const activeFile = this.editorComponent.getActiveFile();
+      if (!activeFile) {
+        showToast('Drag a note or folder here, or select one and press Delete', 'info');
+        return;
+      }
+      this.folderTreeComponent.requestDelete(activeFile);
+    };
+
+    this.container.addEventListener('click', trashOpenNote);
+    this.container.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        trashOpenNote();
+      }
+    });
   }
 
-  async handleTrashDrop(itemPath) {
-    if (!itemPath) return;
-    
-    const itemName = itemPath.split(/[/\\]/).pop();
-    
-    this.modalComponent.showConfirm(
-      `Delete "${itemName}"? This cannot be undone.`,
-      async (confirmed) => {
-        if (!confirmed) return;
-
-        try {
-          this.container.classList.add('confirm');
-          setTimeout(() => this.container.classList.remove('confirm'), 500);
-          
-          const result = await this.fileService.deleteItem(itemPath);
-          
-          if (result.success) {
-            console.log('Item deleted successfully');
-            this.editorComponent.handleFileDeleted(itemPath);
-            this.folderTreeComponent.refresh();
-          } else {
-            console.error('Failed to delete item:', result.error);
-          }
-        } catch (error) {
-          console.error('Error during deletion:', error);
-        }
-      }
-    );
+  /** Brief visual acknowledgement that something was dropped here. */
+  flash() {
+    this.container.classList.add('confirm');
+    setTimeout(() => this.container.classList.remove('confirm'), 500);
   }
 }

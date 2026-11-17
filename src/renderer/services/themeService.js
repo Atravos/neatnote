@@ -1,146 +1,169 @@
 /**
  * ThemeService - Manages application themes
- * Handles theme switching and persistence
+ * Handles theme switching and persistence.
+ *
+ * Five curated themes, each defined as a small palette. The palette sets
+ * the base CSS variables; every other shade in the app (hover/active
+ * fills, secondary text, subtle borders, accent tints, selected states)
+ * is derived from these in variables.css via color-mix(), which is what
+ * keeps hover/active/selected behavior consistent across the sidebar,
+ * toolbar, editor, modals, and titlebar in every theme.
  */
+
+const THEMES = {
+  /* Clean, neutral, indigo accent */
+  light: {
+    bg: '#ffffff',
+    sidebar: '#f6f5f2',
+    surface: '#ffffff',
+    text: '#1f2328',
+    border: '#e3e2dd',
+    accent: '#4263eb',
+    onAccent: '#ffffff'
+  },
+  /* Cool graphite, periwinkle accent */
+  dark: {
+    bg: '#1c1e22',
+    sidebar: '#16181c',
+    surface: '#24262c',
+    text: '#e6e8ec',
+    border: '#33363d',
+    accent: '#7aa2f7',
+    onAccent: '#10141c'
+  },
+  /* Warm cream, bronze accent — for long sepia writing sessions */
+  paper: {
+    bg: '#faf6ec',
+    sidebar: '#f1eadb',
+    surface: '#fdfaf3',
+    text: '#443927',
+    border: '#e3dac3',
+    accent: '#9c6b1e',
+    onAccent: '#fffdf7'
+  },
+  /* Deep evergreen, sage accent */
+  moss: {
+    bg: '#181f1a',
+    sidebar: '#121814',
+    surface: '#202923',
+    text: '#dce6dd',
+    border: '#2d382f',
+    accent: '#7fc796',
+    onAccent: '#0d1a11'
+  },
+  /* Soft night violet, lavender accent */
+  dusk: {
+    bg: '#1d1b27',
+    sidebar: '#171520',
+    surface: '#262233',
+    text: '#e4e0f0',
+    border: '#343047',
+    accent: '#a78bfa',
+    onAccent: '#171226'
+  }
+};
+
+/**
+ * localStorage key holding the active palette as JSON. It is read by
+ * src/renderer/theme-boot.js — a tiny script that runs before the first
+ * paint — so the app never flashes the default light theme at startup.
+ */
+const PALETTE_STORAGE_KEY = 'neatnote-theme-palette';
+
+/** CSS custom property for each palette entry */
+const PALETTE_VARIABLES = {
+  bg: '--bg-color',
+  sidebar: '--sidebar-bg',
+  surface: '--surface',
+  text: '--text-color',
+  border: '--border-color',
+  accent: '--accent-color',
+  onAccent: '--on-accent'
+};
+
 export class ThemeService {
   constructor() {
+    // Historical key name — kept so existing users keep their theme
     this.storageKey = 'simplenote-theme';
     this.defaultTheme = 'light';
-    console.log('Theme service initialized');
+
+    // Themes removed in the polish pass map to their closest surviving
+    // relative so nobody's saved preference breaks.
+    this.legacyThemeMap = {
+      sepia: 'paper',
+      autumn: 'paper',
+      blue: 'light',
+      ocean: 'light',
+      monochrome: 'light',
+      highcontrast: 'light',
+      pastel: 'light',
+      forest: 'moss',
+      terminal: 'moss',
+      purple: 'dusk'
+    };
   }
 
   /**
-   * Get the available themes
-   * @returns {Array<string>} Array of theme names
+   * Resolve any theme name (including removed legacy names) to a valid one.
+   * @param {string} theme - Requested theme name
+   * @returns {string} A valid theme name
    */
-  getAvailableThemes() {
-    return [
-      'light', 
-      'dark', 
-      'blue', 
-      'sepia',
-      'forest',
-      'purple',
-      'ocean',
-      'autumn',
-      'terminal',
-      'monochrome',
-      'highcontrast',
-      'pastel'
-    ];
+  resolveTheme(theme) {
+    if (THEMES[theme]) return theme;
+    if (theme && this.legacyThemeMap[theme]) return this.legacyThemeMap[theme];
+    return this.defaultTheme;
   }
 
   /**
    * Apply a theme to the application
    * @param {string} theme - Theme name
+   * @param {Object} [options]
+   * @param {boolean} [options.remember=true] - Also record the palette for
+   *        the next launch. False only while showing the default theme for
+   *        lack of a saved choice, so that default never overwrites what
+   *        recoverMissingPreference() is about to read.
+   * @returns {string} The theme actually applied (after resolution)
    */
-  applyTheme(theme) {
+  applyTheme(theme, { remember = true } = {}) {
     try {
-      console.log('Applying theme:', theme);
-      document.body.className = ''; // Clear existing themes
-      document.body.classList.add(`app-theme-${theme}`);
-      
-      // Apply theme-specific CSS variables
-      switch (theme) {
-        case 'dark':
-          document.documentElement.style.setProperty('--bg-color', '#202124');
-          document.documentElement.style.setProperty('--sidebar-bg', '#292a2d');
-          document.documentElement.style.setProperty('--text-color', '#e8eaed');
-          document.documentElement.style.setProperty('--border-color', '#5f6368');
-          document.documentElement.style.setProperty('--hover-color', '#3c4043');
-          document.documentElement.style.setProperty('--accent-color', '#8ab4f8');
-          break;
-        case 'blue':
-          document.documentElement.style.setProperty('--bg-color', '#f8fbff');
-          document.documentElement.style.setProperty('--sidebar-bg', '#e8f0fe');
-          document.documentElement.style.setProperty('--text-color', '#3c4043');
-          document.documentElement.style.setProperty('--border-color', '#c6dafc');
-          document.documentElement.style.setProperty('--hover-color', '#d2e3fc');
-          document.documentElement.style.setProperty('--accent-color', '#1a73e8');
-          break;
-        case 'sepia':
-          document.documentElement.style.setProperty('--bg-color', '#fbf8f2');
-          document.documentElement.style.setProperty('--sidebar-bg', '#f4ecd8');
-          document.documentElement.style.setProperty('--text-color', '#5f4b32');
-          document.documentElement.style.setProperty('--border-color', '#e6d7b8');
-          document.documentElement.style.setProperty('--hover-color', '#efe4cf');
-          document.documentElement.style.setProperty('--accent-color', '#a3681a');
-          break;
-        case 'forest':
-          document.documentElement.style.setProperty('--bg-color', '#f5f9f0');
-          document.documentElement.style.setProperty('--sidebar-bg', '#e8f2e2');
-          document.documentElement.style.setProperty('--text-color', '#2c3e2d');
-          document.documentElement.style.setProperty('--border-color', '#c5d6ba');
-          document.documentElement.style.setProperty('--hover-color', '#dae9d1');
-          document.documentElement.style.setProperty('--accent-color', '#4a7c59');
-          break;
-        case 'purple':
-          document.documentElement.style.setProperty('--bg-color', '#f8f7fc');
-          document.documentElement.style.setProperty('--sidebar-bg', '#eee9fa');
-          document.documentElement.style.setProperty('--text-color', '#483d6b');
-          document.documentElement.style.setProperty('--border-color', '#d8cff5');
-          document.documentElement.style.setProperty('--hover-color', '#e4ddf8');
-          document.documentElement.style.setProperty('--accent-color', '#6a4c93');
-          break;
-        case 'ocean':
-          document.documentElement.style.setProperty('--bg-color', '#f3f9fc');
-          document.documentElement.style.setProperty('--sidebar-bg', '#e7f5fb');
-          document.documentElement.style.setProperty('--text-color', '#2e5677');
-          document.documentElement.style.setProperty('--border-color', '#bde0f1');
-          document.documentElement.style.setProperty('--hover-color', '#d0e9f5');
-          document.documentElement.style.setProperty('--accent-color', '#0077b6');
-          break;
-        case 'autumn':
-          document.documentElement.style.setProperty('--bg-color', '#fdf8f2');
-          document.documentElement.style.setProperty('--sidebar-bg', '#f8ede3');
-          document.documentElement.style.setProperty('--text-color', '#774936');
-          document.documentElement.style.setProperty('--border-color', '#e9d5c2');
-          document.documentElement.style.setProperty('--hover-color', '#f2e6d8');
-          document.documentElement.style.setProperty('--accent-color', '#c87941');
-          break;
-        case 'terminal':
-          document.documentElement.style.setProperty('--bg-color', '#0d1117');
-          document.documentElement.style.setProperty('--sidebar-bg', '#161b22');
-          document.documentElement.style.setProperty('--text-color', '#58a6ff');
-          document.documentElement.style.setProperty('--border-color', '#30363d');
-          document.documentElement.style.setProperty('--hover-color', '#262f3e');
-          document.documentElement.style.setProperty('--accent-color', '#58a6ff');
-          break;
-        case 'monochrome':
-          document.documentElement.style.setProperty('--bg-color', '#ffffff');
-          document.documentElement.style.setProperty('--sidebar-bg', '#f0f0f0');
-          document.documentElement.style.setProperty('--text-color', '#333333');
-          document.documentElement.style.setProperty('--border-color', '#d6d6d6');
-          document.documentElement.style.setProperty('--hover-color', '#e8e8e8');
-          document.documentElement.style.setProperty('--accent-color', '#5a5a5a');
-          break;
-        case 'highcontrast':
-          document.documentElement.style.setProperty('--bg-color', '#ffffff');
-          document.documentElement.style.setProperty('--sidebar-bg', '#000000');
-          document.documentElement.style.setProperty('--text-color', '#000000');
-          document.documentElement.style.setProperty('--border-color', '#000000');
-          document.documentElement.style.setProperty('--hover-color', '#e0e0e0');
-          document.documentElement.style.setProperty('--accent-color', '#0000ff');
-          break;
-        case 'pastel':
-          document.documentElement.style.setProperty('--bg-color', '#fef9fd');
-          document.documentElement.style.setProperty('--sidebar-bg', '#f9ecf7');
-          document.documentElement.style.setProperty('--text-color', '#7a5980');
-          document.documentElement.style.setProperty('--border-color', '#f3d9ee');
-          document.documentElement.style.setProperty('--hover-color', '#f7e3f5');
-          document.documentElement.style.setProperty('--accent-color', '#c490bf');
-          break;
-        default: // Light theme
-          document.documentElement.style.setProperty('--bg-color', '#ffffff');
-          document.documentElement.style.setProperty('--sidebar-bg', '#fafafa');
-          document.documentElement.style.setProperty('--text-color', '#3c4043');
-          document.documentElement.style.setProperty('--border-color', '#eeeeee');
-          document.documentElement.style.setProperty('--hover-color', '#f5f5f5');
-          document.documentElement.style.setProperty('--accent-color', '#1a73e8');
-          break;
+      const resolved = this.resolveTheme(theme);
+      const palette = THEMES[resolved];
+
+      // Only touch theme classes — the body also carries platform-* classes
+      // used by the custom titlebar.
+      Array.from(document.body.classList)
+        .filter((cls) => cls.startsWith('app-theme-'))
+        .forEach((cls) => document.body.classList.remove(cls));
+      document.body.classList.add(`app-theme-${resolved}`);
+
+      const root = document.documentElement.style;
+      for (const [key, variable] of Object.entries(PALETTE_VARIABLES)) {
+        root.setProperty(variable, palette[key]);
       }
+
+      if (remember) {
+        // Remember the palette for the pre-paint boot script (next launch)
+        try {
+          const forBoot = {};
+          for (const [key, variable] of Object.entries(PALETTE_VARIABLES)) {
+            forBoot[variable] = palette[key];
+          }
+          localStorage.setItem(PALETTE_STORAGE_KEY, JSON.stringify(forBoot));
+        } catch (error) {
+          // Without it the theme still applies, just a moment later
+        }
+
+        // Let the main process paint the next launch in this background
+        // (kills the white flash on dark themes)
+        if (window.api && typeof window.api.setThemeBackground === 'function') {
+          window.api.setThemeBackground(palette.bg);
+        }
+      }
+
+      return resolved;
     } catch (error) {
       console.error('Error applying theme:', error);
+      return this.defaultTheme;
     }
   }
 
@@ -150,8 +173,7 @@ export class ThemeService {
    */
   saveThemePreference(theme) {
     try {
-      localStorage.setItem(this.storageKey, theme);
-      console.log('Theme preference saved:', theme);
+      localStorage.setItem(this.storageKey, this.resolveTheme(theme));
     } catch (error) {
       console.error('Error saving theme preference:', error);
     }
@@ -159,14 +181,13 @@ export class ThemeService {
 
   /**
    * Load saved theme preference from localStorage
-   * @returns {string} Theme name
+   * @returns {string} Theme name (always valid, legacy names migrated)
    */
   loadThemePreference() {
     try {
       const savedTheme = localStorage.getItem(this.storageKey);
       if (savedTheme) {
-        console.log('Loaded saved theme:', savedTheme);
-        return savedTheme;
+        return this.resolveTheme(savedTheme);
       }
     } catch (error) {
       console.error('Error loading theme preference:', error);
@@ -175,11 +196,59 @@ export class ThemeService {
   }
 
   /**
+   * Whether a theme preference is stored at all.
+   * @returns {boolean}
+   */
+  hasSavedPreference() {
+    try {
+      return !!localStorage.getItem(this.storageKey);
+    } catch (error) {
+      return false;
+    }
+  }
+
+  /**
    * Initialize theme from saved preference
+   * @returns {string} The theme applied
    */
   initialize() {
     const theme = this.loadThemePreference();
-    this.applyTheme(theme);
+    this.applyTheme(theme, { remember: this.hasSavedPreference() });
     return theme;
+  }
+
+  /**
+   * Recover the theme when the saved preference is missing.
+   *
+   * The preference lives in the browser-side storage, which can be wiped
+   * independently of the app's settings file (versions up to 1.0.5 did so
+   * on every update). The settings file still records the last theme's
+   * background color, and each theme has a distinct one — enough to tell
+   * which theme it was.
+   * @returns {Promise<string|null>} The recovered theme, or null if
+   *          there was nothing to recover
+   */
+  async recoverMissingPreference() {
+    try {
+      if (this.hasSavedPreference()) return null;
+      if (!window.api || typeof window.api.getThemeBackground !== 'function') return null;
+
+      const background = await window.api.getThemeBackground();
+      if (typeof background !== 'string') return null;
+
+      const match = Object.keys(THEMES).find(
+        (name) => THEMES[name].bg.toLowerCase() === background.toLowerCase()
+      );
+      // A recovered "light" is the default anyway; and never override a
+      // choice the user made while this was in flight
+      if (!match || match === this.defaultTheme || this.hasSavedPreference()) return null;
+
+      this.applyTheme(match);
+      this.saveThemePreference(match);
+      return match;
+    } catch (error) {
+      console.error('Error recovering theme preference:', error);
+      return null;
+    }
   }
 }
