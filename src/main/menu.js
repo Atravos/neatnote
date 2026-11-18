@@ -17,13 +17,30 @@
  * @param {boolean} options.isDev - Include developer-only items
  * @param {Function} options.sendAction - (action: string) => void; asks the
  *        renderer to run an app action ('new-note', 'save', ...)
+ * @param {Function} [options.checkForUpdates] - Runs a manual update check
+ *        (macOS: NeatNote > Check for Updates…)
  * @returns {Array<Object>} Template for Menu.buildFromTemplate
  */
-function buildMenuTemplate({ isMac, isDev, sendAction }) {
+function buildMenuTemplate({ isMac, isDev, sendAction, checkForUpdates }) {
   const template = [];
 
   if (isMac) {
-    template.push({ role: 'appMenu' });
+    // The standard app menu, plus Check for Updates… under About
+    const appItems = [{ role: 'about' }];
+    if (typeof checkForUpdates === 'function') {
+      appItems.push({ label: 'Check for Updates…', click: () => checkForUpdates() });
+    }
+    appItems.push(
+      { type: 'separator' },
+      { role: 'services' },
+      { type: 'separator' },
+      { role: 'hide' },
+      { role: 'hideOthers' },
+      { role: 'unhide' },
+      { type: 'separator' },
+      { role: 'quit' }
+    );
+    template.push({ label: 'NeatNote', submenu: appItems });
     template.push({
       label: 'File',
       submenu: [

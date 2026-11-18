@@ -7,6 +7,7 @@ const { SortOrders } = require('./sortOrders');
 const { setupIpcHandlers } = require('./ipcHandlers');
 const { buildMenuTemplate } = require('./menu');
 const { toSafeExternalUrl } = require('./security');
+const { createUpdater } = require('./updater');
 
 // Debug logging — enable by launching with NEATNOTE_DEBUG=1
 const DEBUG = process.env.NEATNOTE_DEBUG === '1';
@@ -87,6 +88,7 @@ if (hasInstanceLock) {
 
 let store = null;
 let mainWindow = null;
+let updater = null;
 let rendererReady = false;
 // True once quitting has been approved; lets windows close unchallenged
 let isQuitting = false;
@@ -134,8 +136,10 @@ app.on('web-contents-created', (event, contents) => {
 });
 
 /**
- * Lock down the session: NeatNote is local-first and makes no network
- * requests of its own, so none are allowed at all.
+ * Lock down the session the app's pages run in: NeatNote is local-first,
+ * so no request from its own content is ever allowed. (The only network
+ * use, checking for updates, runs from the main process in a separate
+ * session — see updater.js.)
  */
 function hardenSession() {
   const ses = session.defaultSession;
@@ -270,8 +274,42 @@ function sendMenuAction(action) {
  * Replace Electron's default menu (see menu.js for why).
  */
 function buildApplicationMenu() {
-  const template = buildMenuTemplate({ isMac, isDev, sendAction: sendMenuAction });
+  const template = buildMenuTemplate({
+    isMac,
+    isDev,
+    sendAction: sendMenuAction,
+    checkForUpdates: () => { checkForUpdatesFromMenu(); }
+  });
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
+
+/**
+ * NeatNote > Check for Updates… (macOS menu bar). Settings shows the
+ * result inline; from the menu there is nowhere to show it but a dialog.
+ */
+async function checkForUpdatesFromMenu() {
+  if (!updater) return;
+  const result = await updater.check({ manual: true });
+  let options = null;
+  if (result.status === 'up-to-date') {
+    options = {
+      type: 'info',
+      message: "You're up to date",
+      detail: `NeatNote ${result.current} is the newest version.`
+    };
+  } else if (result.status === 'error') {
+    options = { type: 'warning', message: "Couldn't check for updates", detail: result.message };
+  } else if (result.status === 'busy') {
+    options = { type: 'info', message: 'Already checking for updates', detail: 'Give it a moment.' };
+  }
+  if (!options) return;
+  const parent = (mainWindow && !mainWindow.isDestroyed()) ? mainWindow : null;
+  const full = { title: 'Check for Updates', buttons: ['OK'], noLink: true, ...options };
+  try {
+    await (parent ? dialog.showMessageBox(parent, full) : dialog.showMessageBox(full));
+  } catch (error) {
+    console.error('Could not show the update result:', error.message);
+  }
 }
 
 /**
@@ -632,6 +670,33 @@ onTrusted('theme-bg-changed', (event, color) => {
   }
 });
 
+// ---- Updates ---------------------------------------------------------------------
+
+ipcMain.handle('updates-get-state', (event) => {
+  if (!isTrustedSender(event) || !updater) return null;
+  return updater.getState();
+});
+
+ipcMain.handle('updates-set-auto-check', (event, enabled) => {
+  if (!isTrustedSender(event) || !updater || typeof enabled !== 'boolean') return { success: false };
+  try {
+    updater.setAutoCheckEnabled(enabled);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('updates-check-now', async (event) => {
+  if (!isTrustedSender(event) || !updater) return { status: 'error', message: 'Unavailable' };
+  return updater.check({ manual: true });
+});
+
+ipcMain.handle('updates-install-now', async (event) => {
+  if (!isTrustedSender(event) || !updater) return { success: false, error: 'Unavailable' };
+  return updater.installNow();
+});
+
 // ---- Startup -------------------------------------------------------------------
 
 /**
@@ -675,6 +740,11 @@ if (hasInstanceLock) {
     const sortOrders = new SortOrders(store, fileSystem.getNotesRoot(userDataPath));
 
     hardenSession();
+    updater = createUpdater({
+      store,
+      getMainWindow: () => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : null),
+      debugLog
+    });
     buildApplicationMenu();
 
     setupIpcHandlers({
@@ -687,6 +757,7 @@ if (hasInstanceLock) {
     });
 
     createWindow();
+    updater.scheduleStartupCheck();
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow();

@@ -51,6 +51,39 @@ const apiMethods = {
     }
   },
 
+  // ---- Updates -----------------------------------------------------------------
+  updates: {
+    /** @returns {Promise<{version: string, autoCheck: boolean, busy: boolean, readyVersion: string|null}|null>} */
+    getState: async () => {
+      try {
+        return await ipcRenderer.invoke('updates-get-state');
+      } catch (error) {
+        return null;
+      }
+    },
+    setAutoCheck: (enabled) => invoke('updates-set-auto-check', enabled === true),
+    /** @returns {Promise<{status: string, current: string, latest?: string, message?: string}>} */
+    checkNow: async () => {
+      try {
+        return await ipcRenderer.invoke('updates-check-now');
+      } catch (error) {
+        return { status: 'error', message: error.message };
+      }
+    },
+    installNow: () => invoke('updates-install-now'),
+    /**
+     * Follow a download started from the update prompt.
+     * @param {Function} callback - ({state, version, percent?, message?}) => void
+     */
+    onStatus: (callback) => {
+      if (typeof callback !== 'function') return;
+      ipcRenderer.removeAllListeners('update-status');
+      ipcRenderer.on('update-status', (event, status) => {
+        if (status && typeof status === 'object') callback(status);
+      });
+    }
+  },
+
   /**
    * Register the function that writes pending edits to disk when the
    * window is about to close. It should resolve to `false` if a save

@@ -1,3 +1,30 @@
+# NeatNote 1.2.0
+
+## New
+- **Updates built in — only if you allow it.** The first time it opens,
+  NeatNote asks whether it may check for updates automatically. If you say
+  yes, it checks GitHub for a newer version each time it opens and offers
+  it: **Update**, **Later**, or **Skip This Version**. Nothing is ever
+  installed without your OK.
+  - Windows: downloads the installer, checks its size and SHA-256 against
+    the release, then closes NeatNote (saving first) and runs the installer
+    over the current version. Taskbar shows download progress.
+  - macOS: opens the download page. (macOS only lets an app replace itself
+    when it is signed with an Apple Developer ID, which these builds aren't.)
+  - Settings → Updates: current version, the "Check for updates when
+    NeatNote opens" switch (off until you agree), and a **Check for
+    updates** button that works either way. macOS also has
+    NeatNote → Check for Updates… in the menu bar.
+
+## Privacy
+- NeatNote connects to nothing until you allow it. The update check is the
+  only network request it ever makes: a plain request for the latest public
+  release on GitHub. It runs in a separate,
+  in-memory session from the main process; the app's own pages are still
+  blocked from the network entirely. Answering "Don't Check" (or turning
+  the switch off) means NeatNote never connects unless you press **Check for
+  updates**.
+
 # NeatNote 1.1.0
 
 Full audit pass on 1.0.5. Every item below was fixed; the Critical and most

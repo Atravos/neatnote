@@ -145,6 +145,63 @@
   color: var(--text-secondary);
 }
 
+/* Updates section (created by settings.js) */
+.settings-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px 0;
+  font-size: 13px;
+  color: var(--text-color);
+  cursor: pointer;
+  user-select: none;
+}
+
+.settings-checkbox input[type="checkbox"] {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  accent-color: var(--accent-color);
+  cursor: pointer;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.secondary-button:disabled,
+.secondary-button[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: default;
+  background-color: transparent;
+}
+
+.update-status {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+
+.update-status[data-tone="success"] {
+  color: var(--text-color);
+}
+
+.update-status[data-tone="error"] {
+  color: var(--danger);
+}
+
+.settings-note.settings-fineprint {
+  margin: 10px 0 0 0;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
 /* Uninstall button (created by settings.js) */
 .danger-button {
   padding: 7px 16px;
@@ -170,6 +227,16 @@
 .settings-container {
   width: 420px;
   max-width: calc(100vw - 48px);
+  /* Small windows: the body scrolls; the title and Close button stay put */
+  max-height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-container .modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .settings-section {

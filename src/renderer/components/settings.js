@@ -25,6 +25,7 @@ export class SettingsComponent {
 
     this.setupSettings();
     this.createNotesSection();
+    this.createUpdatesSection();
     this.createUninstallButton();
   }
 
@@ -193,6 +194,143 @@ export class SettingsComponent {
       body.appendChild(section);
     } catch (error) {
       console.error('Error creating notes section:', error);
+    }
+  }
+
+  /**
+   * "Updates" section: current version, the automatic-check switch, and a
+   * button to check now. The check itself, the prompt and the download
+   * all happen in the main process; this only shows where things stand.
+   */
+  createUpdatesSection() {
+    try {
+      const updates = window.api && window.api.updates;
+      if (!updates) return;
+      const body = this.getSettingsBody();
+      if (!body) return;
+
+      const section = this.createSection('Updates');
+      section.id = 'updates-section';
+
+      const version = document.createElement('p');
+      version.className = 'settings-note';
+      version.id = 'update-version';
+      section.appendChild(version);
+
+      const autoLabel = document.createElement('label');
+      autoLabel.className = 'settings-checkbox';
+      const autoCheck = document.createElement('input');
+      autoCheck.type = 'checkbox';
+      autoCheck.id = 'update-auto-check';
+      autoCheck.checked = false;
+      autoLabel.appendChild(autoCheck);
+      autoLabel.appendChild(document.createTextNode('Check for updates when NeatNote opens'));
+      section.appendChild(autoLabel);
+
+      const row = document.createElement('div');
+      row.className = 'settings-row';
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'secondary-button';
+      button.id = 'update-check-btn';
+      button.textContent = 'Check for updates';
+      const status = document.createElement('span');
+      status.className = 'update-status';
+      status.id = 'update-status';
+      status.setAttribute('role', 'status');
+      status.setAttribute('aria-live', 'polite');
+      row.appendChild(button);
+      row.appendChild(status);
+      section.appendChild(row);
+
+      const fineprint = document.createElement('p');
+      fineprint.className = 'settings-note settings-fineprint';
+      fineprint.textContent =
+        'NeatNote only connects to the internet to check for updates, and only when you allow it. Your notes never leave this computer.';
+      section.appendChild(fineprint);
+
+      body.appendChild(section);
+
+      let readyVersion = null;
+      // aria-disabled rather than `disabled`: a disabled button drops
+      // keyboard focus out of the dialog, and Escape/Tab stop working
+      let busy = false;
+      const setBusy = (value) => {
+        busy = value;
+        button.setAttribute('aria-disabled', String(value));
+      };
+      const setStatus = (text, tone = '') => {
+        status.textContent = text;
+        status.dataset.tone = tone;
+      };
+      const showReady = (version) => {
+        readyVersion = version;
+        button.textContent = 'Install update';
+        setBusy(false);
+        setStatus(`NeatNote ${version} is ready to install.`, 'success');
+      };
+
+      updates.getState().then((state) => {
+        if (!state) return;
+        version.textContent = `You have NeatNote ${state.version}.`;
+        autoCheck.checked = state.autoCheck === true;
+        if (state.readyVersion) showReady(state.readyVersion);
+      });
+
+      autoCheck.addEventListener('change', async () => {
+        const result = await updates.setAutoCheck(autoCheck.checked);
+        if (!result || !result.success) {
+          autoCheck.checked = !autoCheck.checked;
+          showToast('Could not save that setting', 'error');
+        }
+      });
+
+      button.addEventListener('click', async () => {
+        if (busy) return;
+        if (readyVersion) {
+          const result = await updates.installNow();
+          if (!result.success) setStatus(result.error || 'Could not start the installer.', 'error');
+          return;
+        }
+        setBusy(true);
+        setStatus('Checking…');
+        const result = await updates.checkNow();
+        setBusy(false);
+        switch (result.status) {
+          case 'up-to-date':
+            setStatus("You're up to date.", 'success');
+            break;
+          case 'available':
+            setStatus(`NeatNote ${result.latest} is available.`);
+            break;
+          case 'downloading':
+            // update-status events take it from here
+            setBusy(true);
+            break;
+          case 'busy':
+            setStatus('Already checking…');
+            break;
+          case 'error':
+          default:
+            setStatus(result.message || "Couldn't check for updates.", 'error');
+        }
+      });
+
+      // Progress of a download started from the update prompt
+      updates.onStatus((update) => {
+        if (update.state === 'downloading') {
+          setBusy(true);
+          if (update.percent === 0) showToast(`Downloading NeatNote ${update.version}…`, 'info');
+          setStatus(`Downloading ${update.version}… ${update.percent}%`);
+        } else if (update.state === 'ready') {
+          showReady(update.version);
+        } else if (update.state === 'error') {
+          setBusy(false);
+          setStatus(update.message || 'The update failed.', 'error');
+        }
+      });
+    } catch (error) {
+      console.error('Error creating updates section:', error);
     }
   }
 

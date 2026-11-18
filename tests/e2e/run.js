@@ -26,7 +26,12 @@ const notesRoot = path.join(userData, 'notes');
 const exportDir = fs.mkdtempSync(path.join(os.tmpdir(), 'neatnote-e2e-export-'));
 
 app.setPath('userData', userData);
+// Started as `electron tests/e2e/run.js`, the app would otherwise report
+// Electron's own version number
+app.setVersion(require(path.join(APP_ROOT, 'package.json')).version);
 process.env.NEATNOTE_ALLOW_MULTIPLE = '1';
+// The startup update check must never reach the network in a test
+process.env.NEATNOTE_DISABLE_UPDATE_CHECK = '1';
 
 // ---- Seed data (before the app starts) ------------------------------------------
 
@@ -62,8 +67,9 @@ fs.writeFileSync(path.join(userData, 'config.json'), JSON.stringify({
 
 // ---- Stubs for things that must not really happen in a test ------------------
 
-const recorded = { external: [], openedPaths: [], revealed: [], syncDialogs: [], trashed: [], menus: [] };
+const recorded = { external: [], openedPaths: [], revealed: [], syncDialogs: [], dialogs: [], trashed: [], menus: [], fetches: [] };
 let syncDialogResponse = 0;
+let dialogResponse = 1;
 let saveDialogTarget = null;
 
 electron.shell.openExternal = async (url) => { recorded.external.push(url); };
@@ -80,6 +86,10 @@ electron.Menu.buildFromTemplate = (template) => {
   menu.popup = () => { recorded.menus.push(template); };
   return menu;
 };
+electron.dialog.showMessageBox = async (...args) => {
+  recorded.dialogs.push(args[args.length - 1]);
+  return { response: dialogResponse, checkboxChecked: false };
+};
 electron.dialog.showSaveDialog = async () => (
   saveDialogTarget ? { canceled: false, filePath: saveDialogTarget } : { canceled: true }
 );
@@ -89,6 +99,31 @@ fileSystem.setTrashImplementation(async (target) => {
   recorded.trashed.push(target);
   fs.rmSync(target, { recursive: true, force: true });
 });
+
+// Update checks: a fake GitHub that answers with `fakeRelease`
+const updater = require(path.join(APP_ROOT, 'src/main/updater.js'));
+let fakeRelease = null;
+let fakeNetworkDown = false;
+updater.setFetchImplementation(async (url, init) => {
+  recorded.fetches.push({ url, headers: (init && init.headers) || {} });
+  if (fakeNetworkDown) throw new Error('net::ERR_INTERNET_DISCONNECTED');
+  return {
+    ok: true,
+    status: 200,
+    json: async () => fakeRelease
+  };
+});
+const appVersion = require(path.join(APP_ROOT, 'package.json')).version;
+function releaseFor(version) {
+  return {
+    tag_name: `v${version}`,
+    html_url: `https://github.com/Atravos/neatnote/releases/tag/v${version}`,
+    draft: false,
+    prerelease: false,
+    body: '## New\n- **Updates** built in',
+    assets: []
+  };
+}
 
 // Spell check: record what the dictionary loader does
 const spellEvents = [];
@@ -903,6 +938,156 @@ test('Markdown export writes the note to the chosen file', async () => {
   assertEqual(fs.readFileSync(saveDialogTarget, 'utf8'), '# Heading\n\nSome **bold** text\n\n- item\n');
   saveDialogTarget = null;
   await saveNow();
+});
+
+// ---- Updates ---------------------------------------------------------------------
+
+const updateStatus = () => js(`document.getElementById('update-status').textContent`);
+
+async function openSettings() {
+  await click('#settings-icon');
+  await waitFor(`document.getElementById('settings-overlay').classList.contains('show')`, { label: 'settings dialog' });
+  await sleep(120);
+}
+
+async function closeSettings() {
+  await press('Escape');
+  await waitFor(`!document.getElementById('settings-overlay').classList.contains('show')`, { label: 'settings closed' });
+}
+
+test('first launch asks before connecting; "Don\'t Check" means no connection', async () => {
+  const flow = updater.getUpdaterForTests();
+  flow.forgetConsentForTests();
+  recorded.dialogs.length = 0;
+  recorded.fetches.length = 0;
+  dialogResponse = 1; // Don't Check (also what closing the dialog does)
+  assertEqual(await flow.runStartupFlow(), 'declined');
+  assertEqual(recorded.dialogs.length, 1);
+  assertEqual(recorded.dialogs[0].message, 'Check for updates automatically?');
+  assertEqual(recorded.dialogs[0].buttons.join('|'), "Check Automatically|Don't Check");
+  assertEqual(recorded.fetches.length, 0, 'nothing may be requested before the user agrees');
+  assertEqual(config().updates.autoCheck, false);
+
+  // Asked only once
+  assertEqual(await flow.runStartupFlow(), 'off');
+  assertEqual(recorded.dialogs.length, 1, 'asked a second time');
+  assertEqual(recorded.fetches.length, 0);
+});
+
+test('"Check Automatically" checks right away and is remembered', async () => {
+  const flow = updater.getUpdaterForTests();
+  flow.forgetConsentForTests();
+  fakeRelease = releaseFor(appVersion);
+  recorded.dialogs.length = 0;
+  recorded.fetches.length = 0;
+  dialogResponse = 0; // Check Automatically
+  assertEqual(await flow.runStartupFlow(), 'checked:up-to-date');
+  assertEqual(config().updates.autoCheck, true);
+  assertEqual(recorded.fetches.length, 1);
+  dialogResponse = 1;
+});
+
+test('Settings shows the version and the automatic-check switch', async () => {
+  // Fresh install, not asked yet: the switch is off
+  updater.getUpdaterForTests().forgetConsentForTests();
+  await reload();
+  await openSettings();
+  await waitFor(`/You have NeatNote/.test(document.getElementById('update-version').textContent)`, { label: 'version line' });
+  assertEqual(await js(`document.getElementById('update-version').textContent`), `You have NeatNote ${appVersion}.`);
+  assertEqual(await js(`document.getElementById('update-auto-check').checked`), false, 'must be off until the user agrees');
+
+  await click('#update-auto-check');
+  await waitFor(() => config().updates && config().updates.autoCheck === true, { label: 'switch saved on' });
+  await reload();
+  await openSettings();
+  await waitFor(`/You have NeatNote/.test(document.getElementById('update-version').textContent)`, { label: 'version line' });
+  assertEqual(await js(`document.getElementById('update-auto-check').checked`), true, 'switch not remembered');
+
+  await click('#update-auto-check');
+  await waitFor(() => config().updates.autoCheck === false, { label: 'switch saved off' });
+  await closeSettings();
+});
+
+test('Check for updates: up to date, and a network failure, are reported in place', async () => {
+  await openSettings();
+  fakeRelease = releaseFor(appVersion);
+  recorded.dialogs.length = 0;
+  recorded.fetches.length = 0;
+  await click('#update-check-btn');
+  await waitFor(async () => /up to date/.test(await updateStatus()), { label: 'up-to-date message' });
+  assertEqual(recorded.dialogs.length, 0, 'no prompt when there is nothing new');
+  assertEqual(recorded.fetches.length, 1);
+  assertEqual(recorded.fetches[0].url, 'https://api.github.com/repos/Atravos/neatnote/releases/latest');
+  assertEqual(await js(`document.activeElement.id`), 'update-check-btn', 'focus must stay in the dialog (Escape/Tab)');
+
+  fakeNetworkDown = true;
+  await click('#update-check-btn');
+  await waitFor(async () => /internet connection/.test(await updateStatus()), { label: 'network error message' });
+  fakeNetworkDown = false;
+  assertEqual(await js(`document.getElementById('update-status').dataset.tone`), 'error');
+  await closeSettings();
+});
+
+test('a newer version is offered; Download opens the download page', async () => {
+  await openSettings();
+  fakeRelease = releaseFor('99.0.0');
+  recorded.dialogs.length = 0;
+  recorded.external.length = 0;
+  dialogResponse = 0; // Update / Download
+  await click('#update-check-btn');
+  await waitFor(() => recorded.dialogs.length === 1, { label: 'update prompt' });
+  const prompt = recorded.dialogs[0];
+  assertEqual(prompt.message, 'NeatNote 99.0.0 is available');
+  assert(prompt.detail.includes(`You have version ${appVersion}.`), 'prompt should name the current version');
+  assert(prompt.detail.includes('• Updates built in'), 'release notes should be summarized as plain text');
+  assertEqual(prompt.buttons[2], 'Skip This Version');
+
+  // Running from source never installs anything itself
+  const expected = require(path.join(APP_ROOT, 'src/main/updates.js'))
+    .downloadPageFor(process.platform, { htmlUrl: fakeRelease.html_url });
+  await waitFor(() => recorded.external.length === 1, { label: 'download page opened' });
+  assertEqual(recorded.external[0], expected);
+  await waitFor(async () => /99\.0\.0 is available/.test(await updateStatus()), { label: 'available message' });
+  dialogResponse = 1;
+  await closeSettings();
+});
+
+test('Skip This Version is remembered, but a manual check still offers it', async () => {
+  await openSettings();
+  fakeRelease = releaseFor('99.0.0');
+  recorded.dialogs.length = 0;
+  recorded.external.length = 0;
+  dialogResponse = 2; // Skip This Version
+  await click('#update-check-btn');
+  await waitFor(() => config().updates.skippedVersion === '99.0.0', { label: 'skipped version saved' });
+  assertEqual(recorded.external.length, 0, 'skipping must not open anything');
+
+  dialogResponse = 1; // Later
+  await click('#update-check-btn');
+  await waitFor(() => recorded.dialogs.length === 2, { label: 'manual check prompts again' });
+  await closeSettings();
+});
+
+test('the macOS menu check reports "up to date" in a dialog', async () => {
+  fakeRelease = releaseFor(appVersion);
+  recorded.dialogs.length = 0;
+  const menu = electron.Menu.getApplicationMenu();
+  const item = menu && menu.items
+    .flatMap((top) => (top.submenu ? top.submenu.items : []))
+    .find((entry) => entry.label === 'Check for Updates…');
+  if (process.platform !== 'darwin') {
+    assert(!item, 'Check for Updates… belongs only in the macOS menu bar');
+    return;
+  }
+  assert(item, 'Check for Updates… missing from the app menu');
+  item.click();
+  await waitFor(() => recorded.dialogs.length === 1, { label: 'up-to-date dialog' });
+  assertEqual(recorded.dialogs[0].message, "You're up to date");
+});
+
+test('the app\'s own pages still cannot reach the network', async () => {
+  const blocked = await js(`fetch('https://api.github.com/').then(() => 'reached', () => 'blocked')`);
+  assertEqual(blocked, 'blocked');
 });
 
 test('a failed save on close asks before discarding; "Go Back" keeps the window', async () => {
