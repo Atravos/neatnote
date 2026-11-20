@@ -7,7 +7,8 @@
  *
  * Supported: headings, bold / italic / strikethrough / underline, inline
  * code, links, bulleted / numbered / check lists (nested), blockquotes,
- * code blocks, horizontal rules, images.
+ * code blocks, horizontal rules, images, tables. Fonts and text sizes have
+ * no Markdown form and are dropped (the text itself is kept).
  */
 
 // Outermost first. Each mark knows how it opens and closes in Markdown.
@@ -160,7 +161,7 @@ function renderInline(segments) {
  * @param {Array} ops
  * @returns {Array<{segments?: Array, attrs?: Object, divider?: boolean}>}
  */
-function toLines(ops) {
+function toLines(ops, mapImage) {
   const lines = [];
   let segments = [];
 
@@ -185,7 +186,12 @@ function toLines(ops) {
         if (segments.length > 0) endLine({});
         lines.push({ divider: true });
       } else if (typeof op.insert.image === 'string') {
-        segments.push({ image: op.insert.image, attrs });
+        const src = mapImage ? mapImage(op.insert.image) : op.insert.image;
+        // Pictures stored as files map to images/<file>; inline image data
+        // from older notes is written as-is so the picture isn't lost
+        if (typeof src === 'string' && src !== '') {
+          segments.push({ image: src, attrs });
+        }
       }
       // Other embeds (video, formula) have no Markdown form and are skipped
     }
@@ -196,14 +202,32 @@ function toLines(ops) {
 }
 
 /**
+ * Escape a table cell: a pipe would end the cell early.
+ * @param {string} text - Rendered inline Markdown
+ * @returns {string}
+ */
+function tableCell(text) {
+  return text.replace(/\|/g, '\\|').trim();
+}
+
+/**
  * Convert a Quill Delta to Markdown.
  * @param {Array|{ops: Array}} delta - Delta object or its ops array
+ * @param {Object} [options]
+ * @param {Function} [options.image] - (src) => string|null: the address to
+ *        write for a picture (null leaves it as it is in the note)
  * @returns {string} Markdown text, ending with a single newline
  *          (an empty document gives an empty string)
  */
-export function deltaToMarkdown(delta) {
+export function deltaToMarkdown(delta, options = {}) {
   const ops = Array.isArray(delta) ? delta : (delta && delta.ops) || [];
-  const lines = toLines(ops);
+  const mapImage = typeof options.image === 'function'
+    ? (src) => {
+      const mapped = options.image(src);
+      return typeof mapped === 'string' ? mapped : src;
+    }
+    : null;
+  const lines = toLines(ops, mapImage);
 
   const blocks = [];      // finished Markdown blocks (joined by blank lines)
   let group = null;       // block being accumulated: { kind, rows: [] }
@@ -217,6 +241,14 @@ export function deltaToMarkdown(delta) {
       const longest = (body.match(/`{3,}/g) || []).reduce((max, run) => Math.max(max, run.length), 2);
       const fence = '`'.repeat(longest + 1);
       blocks.push(`${fence}${group.language}\n${body}\n${fence}`);
+    } else if (group.kind === 'table') {
+      // The first row is the header row, as it is shown in the editor
+      const width = Math.max(1, ...group.rows.map(row => row.cells.length));
+      const line = (cells) =>
+        `| ${Array.from({ length: width }, (_, i) => tableCell(cells[i] || '')).join(' | ')} |`;
+      const rows = group.rows.map(row => line(row.cells));
+      rows.splice(1, 0, `| ${Array.from({ length: width }, () => '---').join(' | ')} |`);
+      blocks.push(rows.join('\n'));
     } else if (group.kind === 'quote') {
       blocks.push(group.rows.map(row => (row ? `> ${row}` : '>')).join('\n>\n'));
     } else {
@@ -259,6 +291,18 @@ export function deltaToMarkdown(delta) {
     }
 
     const text = renderInline(line.segments);
+
+    if (attrs.table !== undefined) {
+      // Each line of a table is one cell; cells of the same row share the
+      // row id Quill gives them
+      const table = openGroup('table');
+      const last = table.rows[table.rows.length - 1];
+      if (last && last.id === attrs.table) last.cells.push(text);
+      else table.rows.push({ id: attrs.table, cells: [text] });
+      counters = [];
+      listTypes = [];
+      continue;
+    }
 
     if (attrs.list) {
       const indent = Math.max(0, Math.min(8, Number(attrs.indent) || 0));

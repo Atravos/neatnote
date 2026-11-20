@@ -39,7 +39,11 @@ const apiMethods = {
   renameItem: (itemPath, newName) => invoke('rename-item', itemPath, newName),
   getNotesRoot: () => invoke('get-notes-root'),
   showInFolder: (itemPath) => invoke('show-in-folder', itemPath),
-  exportNote: (suggestedName, content) => invoke('export-note', suggestedName, content),
+  exportNote: (suggestedName, content, imageNames) => invoke('export-note', suggestedName, content, imageNames),
+  /** Store image bytes (Uint8Array); resolves to { success, url } */
+  saveImage: (bytes) => invoke('save-image', bytes),
+  /** Let the user pick pictures to insert; resolves to { success, urls } */
+  pickImages: () => invoke('pick-images'),
 
   // ---- App -------------------------------------------------------------------
   uninstallApp: () => invoke('uninstall-app'),

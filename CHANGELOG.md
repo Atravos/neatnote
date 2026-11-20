@@ -1,3 +1,41 @@
+# NeatNote 1.3.0
+
+## New
+- **Checklists.** A new toolbar button turns lines into to-dos; click a box
+  to tick it (ticked items are crossed out). Typing `[] ` at the start of a
+  line starts one too.
+- **Font and size for selected text.** Select text and press **Aa** on the
+  toolbar to pick a font and a size. 10 fonts: Serif and Sans (your
+  computer's own), plus 8 bundled with the app so they look the same
+  everywhere and work offline — Inter, Nunito, Lora, Merriweather,
+  EB Garamond, Atkinson Hyperlegible, JetBrains Mono and Caveat
+  (handwriting). Sizes from 12 to 40.
+- **Default font and size.** Settings → Writing sets the font and size for
+  all text that doesn't have its own.
+- **Pictures.** Paste, drag in, or use the picture button (PNG, JPEG, GIF,
+  WebP, up to 25 MB each). Click a picture to make it small, medium, large
+  or full width, or to remove it. Pictures are saved as ordinary files in
+  a hidden `.neatnote-images` folder inside your notes folder, so notes stay
+  small; the same picture used twice is stored once.
+- **Tables.** The table button adds a 3 × 3 table. Tab and Shift+Tab move
+  between cells; Enter moves down (and adds a row at the bottom); Tab on the
+  last cell adds a row. Inside a table, the toolbar shows buttons to add or
+  delete rows and columns, or delete the table.
+- **7 new themes — 12 in all:** Light, Dark, Paper, Moss, Dusk, Midnight,
+  Slate, Sand, Rose, Ocean, Ember and High Contrast. Plus **Auto**, which
+  follows your computer's light/dark setting with a light and a dark theme
+  you choose.
+- **Markdown export** now includes checklists (`- [ ]` / `- [x]`), tables,
+  and pictures (copied into an `images` folder next to the exported file).
+
+## Good to know
+- Fonts, sizes, checklists, tables and pictures need a formatted note
+  (`.html`). Plain text notes (`.txt`) stay plain text.
+- Markdown has no fonts or sizes, so an export keeps the text but not those.
+- Pictures from web pages aren't pasted (that would make NeatNote fetch
+  them from the internet). Save the picture first, then drop it in.
+- Pictures stay in the hidden pictures folder when a note is deleted.
+
 # NeatNote 1.2.0
 
 ## New

@@ -101,3 +101,31 @@ test('malformed input does not throw', async () => {
   assert.equal(await md(null), '');
   assert.equal(await md([null, {}, { insert: null }, { insert: { video: 'x' } }, { insert: 'ok\n' }]), 'ok\n');
 });
+
+test('checklists become task list items', async () => {
+  assert.equal(await md([...line('Buy milk', { list: 'unchecked' }), ...line('Call Sam', { list: 'checked' })]),
+    '- [ ] Buy milk\n- [x] Call Sam\n');
+});
+
+test('tables become pipe tables with the first row as the header', async () => {
+  const cell = (text, row) => [{ insert: text }, { insert: '\n', attributes: { table: row } }];
+  const out = await md([
+    ...cell('Item', 'r1'), ...cell('Qty', 'r1'),
+    ...cell('Apples | red', 'r2'), ...cell('3', 'r2'),
+    ...cell('', 'r3'), ...cell('5', 'r3'),
+    ...line('after')
+  ]);
+  assert.equal(out, '| Item | Qty |\n| --- | --- |\n| Apples \\| red | 3 |\n|  | 5 |\n\nafter\n');
+});
+
+test('stored pictures are written as images/<file>; fonts and sizes are dropped', async () => {
+  const { deltaToMarkdown } = await loaded;
+  const name = 'a'.repeat(32) + '.png';
+  const out = deltaToMarkdown([
+    { insert: 'Big', attributes: { font: 'lora', size: '24px' } },
+    { insert: '\n' },
+    { insert: { image: 'neatnote-image://local/' + name }, attributes: { width: '50%' } },
+    { insert: '\n' }
+  ], { image: (src) => src.replace('neatnote-image://local/', 'images/') });
+  assert.equal(out, 'Big\n\n![](images/' + name + ')\n');
+});

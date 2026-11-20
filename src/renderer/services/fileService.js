@@ -105,8 +105,25 @@ export class FileService {
    * @param {string} content - Text to write
    * @returns {Promise<{success: boolean, path?: string, cancelled?: boolean, error?: string}>}
    */
-  exportNote(suggestedName, content) {
-    return this.api.exportNote(suggestedName, content);
+  exportNote(suggestedName, content, imageNames = []) {
+    return this.api.exportNote(suggestedName, content, imageNames);
+  }
+
+  /**
+   * Store a picture in the notes folder.
+   * @param {Uint8Array} bytes
+   * @returns {Promise<{success: boolean, url?: string, error?: string}>}
+   */
+  saveImage(bytes) {
+    return this.api.saveImage(bytes);
+  }
+
+  /**
+   * Ask the user for pictures to insert; they are stored straight away.
+   * @returns {Promise<{success: boolean, urls?: string[], errors?: string[], cancelled?: boolean}>}
+   */
+  pickImages() {
+    return this.api.pickImages();
   }
 
   /**

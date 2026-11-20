@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, clipboard, dialog, ipcMain, screen, session, shell } = require('electron');
+const { app, BrowserWindow, Menu, clipboard, dialog, ipcMain, protocol, screen, session, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const Store = require('electron-store');
@@ -7,6 +7,7 @@ const { SortOrders } = require('./sortOrders');
 const { setupIpcHandlers } = require('./ipcHandlers');
 const { buildMenuTemplate } = require('./menu');
 const { toSafeExternalUrl } = require('./security');
+const images = require('./images');
 const { createUpdater } = require('./updater');
 
 // Debug logging — enable by launching with NEATNOTE_DEBUG=1
@@ -114,6 +115,13 @@ function openExternalSafe(url) {
 // ---- Global web-contents hardening ------------------------------------------
 // Applies to every WebContents the app ever creates, not just the main
 // window, so nothing can be created that escapes these rules.
+// Pictures in notes are served from the notes folder through an app-only
+// address (see images.js). The scheme must be declared before the app is
+// ready; "secure" so the page's CSP can allow it like a local resource.
+protocol.registerSchemesAsPrivileged([
+  { scheme: images.SCHEME, privileges: { standard: true, secure: true } }
+]);
+
 app.on('web-contents-created', (event, contents) => {
   // <webview> is never used
   contents.on('will-attach-webview', (e) => e.preventDefault());
@@ -740,6 +748,9 @@ if (hasInstanceLock) {
     const sortOrders = new SortOrders(store, fileSystem.getNotesRoot(userDataPath));
 
     hardenSession();
+    // Only stored pictures can be read through this address; see images.js
+    protocol.handle(images.SCHEME, (request) =>
+      images.serveImage(request.url, fileSystem.getNotesRoot(userDataPath)));
     updater = createUpdater({
       store,
       getMainWindow: () => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : null),

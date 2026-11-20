@@ -54,3 +54,13 @@
   --success: #43a15f;
   --warning: #d9930d;
 }
+
+/* High Contrast: secondary text and borders stay strong instead of fading */
+.app-theme-highcontrast {
+  --text-secondary: color-mix(in srgb, var(--text-color) 88%, transparent);
+  --text-faint: color-mix(in srgb, var(--text-color) 72%, transparent);
+  --border-subtle: var(--border-color);
+  --fill-hover: color-mix(in srgb, var(--text-color) 12%, transparent);
+  --fill-active: color-mix(in srgb, var(--text-color) 20%, transparent);
+  --accent-soft: color-mix(in srgb, var(--accent-color) 22%, transparent);
+}

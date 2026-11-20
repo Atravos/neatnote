@@ -18,6 +18,10 @@ import { SettingsComponent } from './components/settings.js';
 
 // Import utils
 import { debounce } from './utils/debounce.js';
+import { applyTypographyDefaults } from './utils/typography.js';
+
+// Default note font and size (Settings → Writing), before anything renders
+applyTypographyDefaults();
 
 /**
  * Letter of a keyboard shortcut, independent of the keyboard layout.
@@ -103,7 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
       settingsIcon: document.getElementById('settings-icon'),
       settingsOverlay: document.getElementById('settings-overlay'),
       closeButton: document.getElementById('settings-close-btn'),
-      themeOptions: document.querySelectorAll('.theme-option')
+      themeContainer: document.querySelector('.theme-options')
     },
     themeService,
     fileService

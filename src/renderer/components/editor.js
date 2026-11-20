@@ -3,6 +3,7 @@ import { showToast } from '../services/toast.js';
 import { toolbarIcons } from '../utils/toolbarIcons.js';
 import { deltaToMarkdown } from '../utils/markdown.js';
 import { baseName, displayName, isWithinPath } from '../utils/paths.js';
+import { FONTS, TEXT_SIZES } from '../utils/typography.js';
 
 /*
  * Rich text editor built on Quill 2 (vendored in /vendor/quill, loaded as a
@@ -36,6 +37,72 @@ function registerDividerBlot() {
   dividerRegistered = true;
 }
 
+/** Address prefix of pictures stored by the app (see src/main/images.js) */
+const IMAGE_URL_PREFIX = 'neatnote-image://local/';
+const STORED_IMAGE = /^neatnote-image:\/\/local\/([0-9a-f]{32}\.(?:png|jpg|gif|webp))$/;
+const DATA_IMAGE = /^data:image\/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/=\s]+$/;
+const IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+const MAX_IMAGE_BYTES = 25 * 1024 * 1024;
+
+/**
+ * Whether a picture address may appear in a note: one the app stored, or
+ * image data pasted inline (which is then stored as a file straight away).
+ * Anything else — web addresses in particular — is refused, because the
+ * app never loads anything from the network.
+ * @param {string} url
+ * @returns {boolean}
+ */
+function isAllowedImageSrc(url) {
+  return typeof url === 'string' && (STORED_IMAGE.test(url) || DATA_IMAGE.test(url));
+}
+
+/**
+ * Fonts, text sizes and pictures. Fonts are stored as classes
+ * (ql-font-<id>), sizes as an inline font-size limited to TEXT_SIZES, and
+ * the image format only accepts the addresses isAllowedImageSrc allows.
+ */
+let formatsRegistered = false;
+function registerFormats() {
+  if (formatsRegistered || !Quill) return;
+
+  const FontClass = Quill.import('attributors/class/font');
+  FontClass.whitelist = FONTS.map((font) => font.id);
+  Quill.register(FontClass, true);
+
+  const SizeStyle = Quill.import('attributors/style/size');
+  SizeStyle.whitelist = TEXT_SIZES;
+  Quill.register(SizeStyle, true);
+
+  const BaseImage = Quill.import('formats/image');
+  class NoteImage extends BaseImage {
+    static sanitize(url) {
+      return isAllowedImageSrc(url) ? url : '//:0';
+    }
+  }
+  NoteImage.blotName = 'image';
+  NoteImage.tagName = 'IMG';
+  Quill.register(NoteImage, true);
+
+  formatsRegistered = true;
+}
+
+/**
+ * Bytes of a base64 data: URL.
+ * @param {string} url
+ * @returns {Uint8Array|null}
+ */
+function dataUrlToBytes(url) {
+  try {
+    const base64 = url.slice(url.indexOf(',') + 1).replace(/\s+/g, '');
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+  } catch (error) {
+    return null;
+  }
+}
+
 /** True when running on macOS (used for shortcut labels in tooltips) */
 const IS_MAC = /mac/i.test(
   (navigator.userAgentData && navigator.userAgentData.platform) ||
@@ -64,6 +131,77 @@ function mod(key, shift = false) {
     return `${shift ? '⇧' : ''}⌘${key}`;
   }
   return `Ctrl+${shift ? 'Shift+' : ''}${key}`;
+}
+
+/**
+ * Table keys, spreadsheet style:
+ * - Enter moves to the cell below (adding a row at the bottom if needed).
+ *   Quill's own Enter does nothing in the middle of a table.
+ * - Tab on the very last cell adds a row; otherwise Tab/Shift+Tab move
+ *   between cells as Quill already does.
+ * - Shift+Enter keeps Quill's behavior: at the table's first or last cell
+ *   it adds a normal line above or below the table, to get out of it.
+ * @returns {Object} Bindings to merge into the keyboard module's config
+ */
+function tableKeyBindings() {
+  let defaults = {};
+  try {
+    defaults = Quill.import('modules/keyboard').DEFAULTS.bindings || {};
+  } catch (error) {
+    console.error('Could not read Quill keyboard defaults:', error);
+  }
+  const bindings = {};
+
+  const moveToCell = (quill, row, column) => {
+    if (!row) return false;
+    const cell = row.children.at(Math.min(column, row.children.length - 1));
+    if (!cell) return false;
+    quill.setSelection(quill.getIndex(cell), 0, 'user');
+    return true;
+  };
+
+  bindings['table enter'] = {
+    key: 'Enter',
+    shiftKey: false,
+    format: ['table'],
+    handler(range) {
+      const table = this.quill.getModule('table');
+      if (!table) return true;
+      const [, row, cell] = table.getTable(range);
+      if (!row || !cell) return true;
+      const column = cell.cellOffset();
+      if (!row.next) table.insertRowBelow();
+      const [, sameRow] = table.getTable(this.quill.getSelection() || range);
+      moveToCell(this.quill, (sameRow || row).next, column);
+      return false;
+    }
+  };
+
+  const originalEnter = defaults['table enter'];
+  if (originalEnter && typeof originalEnter.handler === 'function') {
+    bindings['table shift enter'] = { ...originalEnter, shiftKey: true };
+  }
+
+  const originalTab = defaults['table tab'];
+  if (originalTab && typeof originalTab.handler === 'function') {
+    bindings['table tab'] = {
+      ...originalTab,
+      handler(range, context) {
+        const table = this.quill.getModule('table');
+        if (table && !context.event.shiftKey) {
+          const [, row, cell] = table.getTable(range);
+          if (row && cell && !row.next && !cell.next) {
+            table.insertRowBelow();
+            const [, sameRow] = table.getTable(this.quill.getSelection() || range);
+            moveToCell(this.quill, (sameRow || row).next, 0);
+            return false;
+          }
+        }
+        return originalTab.handler.call(this, range, context);
+      }
+    };
+  }
+  return bindings;
 }
 
 /**
@@ -175,6 +313,7 @@ export class EditorComponent {
     }
 
     registerDividerBlot();
+    registerFormats();
     this.buildToolbar();
 
     // Create auto-save container with status indicator.
@@ -224,14 +363,32 @@ export class EditorComponent {
             // Custom actions the toolbar module doesn't know natively
             link: () => this.handleLinkAction(),
             divider: () => this.insertDivider(),
+            image: () => this.pickImages(),
+            table: () => this.insertTable(),
+            'table-row-above': () => this.tableAction('insertRowAbove'),
+            'table-row-below': () => this.tableAction('insertRowBelow'),
+            'table-col-left': () => this.tableAction('insertColumnLeft'),
+            'table-col-right': () => this.tableAction('insertColumnRight'),
+            'table-delete-row': () => this.tableAction('deleteRow'),
+            'table-delete-col': () => this.tableAction('deleteColumn'),
+            'table-delete': () => this.tableAction('deleteTable'),
             undo: () => this.quill.history.undo(),
             redo: () => this.quill.history.redo()
           }
         },
+        table: true,
+        // Pictures dropped or pasted as files are stored in the notes folder
+        // (not inside the note), then inserted by address
+        uploader: {
+          mimetypes: IMAGE_MIME_TYPES,
+          handler: (range, files) => { this.insertImageFiles(range, files); }
+        },
         clipboard: {
-          // Runs after Quill's own text matchers; see preserveTextMatcher
+          // Run after Quill's own matchers; see preserveTextMatcher and
+          // imageMatcher
           matchers: [
-            [Node.TEXT_NODE, (node, delta) => this.preserveTextMatcher(node, delta)]
+            [Node.TEXT_NODE, (node, delta) => this.preserveTextMatcher(node, delta)],
+            ['IMG', (node, delta) => this.imageMatcher(node, delta)]
           ]
         },
         // userOnly keeps programmatic file loads out of the undo stack
@@ -243,6 +400,7 @@ export class EditorComponent {
             // are wrapped to be inert in plain text notes; the rest of
             // this list adds shortcuts Quill doesn't have.
             ...plainTextSafeBindings(() => this.isPlainTextFile),
+            ...tableKeyBindings(),
             link: {
               key: 'k',
               shortKey: true,
@@ -288,6 +446,11 @@ export class EditorComponent {
       if (source !== 'user') return;
 
       if (this.isPlainTextFile) this.keepPlainText(delta);
+      if (!this.isPlainTextFile && delta.ops.some((op) =>
+        op.insert && typeof op.insert === 'object' &&
+        typeof op.insert.image === 'string' && op.insert.image.startsWith('data:'))) {
+        this.storeInlineImages();
+      }
 
       this.isEditorDirty = true;
       if (this.activeFile) {
@@ -310,6 +473,22 @@ export class EditorComponent {
       event.preventDefault();
       window.open(anchor.href, '_blank', 'noopener');
     });
+
+    // Toolbar state that Quill can't show by itself: the checklist button,
+    // and the table controls that appear while the cursor is in a table
+    this.quill.on('editor-change', () => this.updateContextualToolbar());
+    // The toolbar module refreshes button states itself after every button
+    // click; re-apply ours afterwards so the checklist button stays lit
+    const toolbarModule = this.quill.getModule('toolbar');
+    if (toolbarModule && typeof toolbarModule.update === 'function') {
+      const quillUpdate = toolbarModule.update.bind(toolbarModule);
+      toolbarModule.update = (range) => {
+        quillUpdate(range);
+        this.updateContextualToolbar();
+      };
+    }
+
+    this.setupImageTools();
 
     // Initial (empty) count display
     this.updateCounts();
@@ -348,13 +527,15 @@ export class EditorComponent {
         { format: 'strike', icon: 'strike', label: `Strikethrough (${mod('X', true)})` }
       ],
       [
+        { textStyle: true },
         { format: 'header', value: '1', icon: 'header1', label: 'Heading 1' },
         { format: 'header', value: '2', icon: 'header2', label: 'Heading 2' },
         { format: 'header', value: '3', icon: 'header3', label: 'Heading 3' }
       ],
       [
         { format: 'list', value: 'bullet', icon: 'bulletList', label: 'Bulleted list (Tab / Shift+Tab to indent)' },
-        { format: 'list', value: 'ordered', icon: 'orderedList', label: 'Numbered list (Tab / Shift+Tab to indent)' }
+        { format: 'list', value: 'ordered', icon: 'orderedList', label: 'Numbered list (Tab / Shift+Tab to indent)' },
+        { format: 'list', value: 'check', icon: 'checkList', label: 'Checklist — click a box to tick it' }
       ],
       [
         { format: 'blockquote', icon: 'blockquote', label: 'Blockquote' },
@@ -363,6 +544,8 @@ export class EditorComponent {
       ],
       [
         { format: 'divider', icon: 'horizontalRule', label: 'Horizontal rule' },
+        { format: 'image', icon: 'image', label: 'Insert picture — or paste / drop one into the note' },
+        { format: 'table', icon: 'table', label: 'Insert table' },
         {
           format: 'link',
           icon: 'link',
@@ -385,6 +568,10 @@ export class EditorComponent {
         container.appendChild(sep);
       }
       group.forEach((btn) => {
+        if (btn.textStyle) {
+          container.appendChild(this.buildTextStylePicker());
+          return;
+        }
         const button = document.createElement('button');
         button.type = 'button';
         button.className = `toolbar-btn ql-${btn.format}`;
@@ -396,6 +583,34 @@ export class EditorComponent {
       });
     });
 
+    // Table controls: shown only while the cursor is inside a table
+    this.tableTools = document.createElement('span');
+    this.tableTools.className = 'toolbar-table-tools';
+    this.tableTools.setAttribute('role', 'group');
+    this.tableTools.setAttribute('aria-label', 'Table');
+    const tableSep = document.createElement('span');
+    tableSep.className = 'toolbar-separator';
+    tableSep.setAttribute('aria-hidden', 'true');
+    this.tableTools.appendChild(tableSep);
+    [
+      { format: 'table-row-above', icon: 'rowAbove', label: 'Insert row above' },
+      { format: 'table-row-below', icon: 'rowBelow', label: 'Insert row below' },
+      { format: 'table-col-left', icon: 'colLeft', label: 'Insert column left' },
+      { format: 'table-col-right', icon: 'colRight', label: 'Insert column right' },
+      { format: 'table-delete-row', icon: 'deleteRow', label: 'Delete row' },
+      { format: 'table-delete-col', icon: 'deleteCol', label: 'Delete column' },
+      { format: 'table-delete', icon: 'deleteTable', label: 'Delete table' }
+    ].forEach((btn) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = `toolbar-btn ql-${btn.format}`;
+      button.title = btn.label;
+      button.setAttribute('aria-label', btn.label);
+      button.innerHTML = toolbarIcons[btn.icon];
+      this.tableTools.appendChild(button);
+    });
+    container.appendChild(this.tableTools);
+
     // Badge shown when a legacy plain text (.txt) note is open
     this.plainTextBadge = document.createElement('span');
     this.plainTextBadge.className = 'plain-text-badge';
@@ -403,6 +618,430 @@ export class EditorComponent {
     this.plainTextBadge.title =
       `This is a plain text note — it stays plain text and formatting is not saved. New notes (${mod('N')}) support rich text.`;
     container.appendChild(this.plainTextBadge);
+  }
+
+  /**
+   * The "Aa" button: opens a small panel with the font and size menus for
+   * the selected text. (Two dropdowns don't fit on the toolbar next to
+   * everything else at the default window size.) The menus live inside
+   * the toolbar element, so Quill's toolbar module wires them up and keeps
+   * them showing the font and size at the cursor.
+   * @returns {HTMLElement}
+   */
+  buildTextStylePicker() {
+    const wrap = document.createElement('span');
+    wrap.className = 'text-style-picker';
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'toolbar-btn text-style-btn';
+    const label = 'Font and size of the selected text';
+    button.title = label;
+    button.setAttribute('aria-label', label);
+    button.setAttribute('aria-haspopup', 'true');
+    button.setAttribute('aria-expanded', 'false');
+    button.innerHTML = toolbarIcons.textStyle;
+
+    const panel = document.createElement('div');
+    panel.className = 'text-style-panel';
+    panel.setAttribute('role', 'group');
+    panel.setAttribute('aria-label', 'Font and size');
+    const field = (text, select) => {
+      const row = document.createElement('label');
+      row.className = 'text-style-field';
+      const caption = document.createElement('span');
+      caption.textContent = text;
+      row.append(caption, select);
+      return row;
+    };
+    panel.append(field('Font', this.buildSelect('font')), field('Size', this.buildSelect('size')));
+
+    const setOpen = (open) => {
+      panel.classList.toggle('open', open);
+      button.classList.toggle('ql-active', open);
+      button.setAttribute('aria-expanded', String(open));
+    };
+    this.closeTextStylePanel = () => setOpen(false);
+
+    // mousedown keeps the selection in the note while the panel opens
+    button.addEventListener('mousedown', (event) => event.preventDefault());
+    button.addEventListener('click', () => {
+      if (this.isPlainTextFile) return;
+      setOpen(!panel.classList.contains('open'));
+    });
+    panel.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        setOpen(false);
+        this.quill.focus();
+      }
+    });
+    // Picking a font or size closes the panel and goes back to the text
+    panel.addEventListener('change', () => {
+      setOpen(false);
+      this.quill.focus();
+    });
+    document.addEventListener('mousedown', (event) => {
+      if (panel.classList.contains('open') && !wrap.contains(event.target)) setOpen(false);
+    });
+
+    wrap.append(button, panel);
+    return wrap;
+  }
+
+  /**
+   * A dropdown for the font or the text size of the selection.
+   * Uses Quill's `ql-<format>` select convention: the toolbar module
+   * applies the chosen option and keeps the shown value in sync with the
+   * text at the cursor. The option marked `selected` (no value) means
+   * "none" — the default font / normal size.
+   * @param {'font'|'size'} kind
+   * @returns {HTMLSelectElement}
+   */
+  buildSelect(kind) {
+    const select = document.createElement('select');
+    select.className = `toolbar-select ql-${kind}`;
+    const label = kind === 'font' ? 'Font of the selected text' : 'Size of the selected text';
+    select.title = label;
+    select.setAttribute('aria-label', label);
+
+    const none = document.createElement('option');
+    none.setAttribute('selected', '');
+    none.textContent = kind === 'font' ? 'Default font' : 'Normal';
+
+    if (kind === 'font') {
+      select.appendChild(none);
+      for (const font of FONTS) {
+        const option = document.createElement('option');
+        option.value = font.id;
+        option.textContent = font.label;
+        option.style.fontFamily = font.stack;
+        select.appendChild(option);
+      }
+    } else {
+      for (const size of TEXT_SIZES) {
+        // "Normal" sits where it belongs in the size order (between 14 and 18)
+        if (size === '18px') select.appendChild(none);
+        const option = document.createElement('option');
+        option.value = size;
+        option.textContent = size.replace('px', '');
+        select.appendChild(option);
+      }
+    }
+    return select;
+  }
+
+  /**
+   * Toolbar state Quill doesn't track by itself.
+   *   - The checklist button: Quill's toolbar marks list buttons active by
+   *     comparing values, and a checklist line is "checked"/"unchecked",
+   *     never "check".
+   *   - The table controls: visible only while the cursor is in a table.
+   */
+  updateContextualToolbar() {
+    if (!this.quill || !this.elements.toolbarElement) return;
+    const range = this.quill.getSelection();
+    let inChecklist = false;
+    let inTable = false;
+    if (range && !this.isPlainTextFile) {
+      const formats = this.quill.getFormat(range);
+      inChecklist = formats.list === 'checked' || formats.list === 'unchecked';
+      inTable = formats.table !== undefined;
+    }
+    const checkButton = this.elements.toolbarElement.querySelector('.ql-list[value="check"]');
+    if (checkButton) checkButton.classList.toggle('ql-active', inChecklist);
+    if (range && this.tableTools) this.tableTools.classList.toggle('visible', inTable);
+  }
+
+  // ---- Tables -----------------------------------------------------------------
+
+  /** Insert a 3 × 3 table at the cursor. */
+  insertTable() {
+    if (this.isPlainTextFile) return;
+    const table = this.quill.getModule('table');
+    if (!table) return;
+    const range = this.quill.getSelection(true);
+    if (!range) return;
+    if (this.quill.getFormat(range).table !== undefined) {
+      showToast('Tables can\'t go inside tables — use the table buttons to add rows or columns', 'info');
+      return;
+    }
+    // A table starts on a fresh empty line: Quill would otherwise pull the
+    // text of the current line into the first cell
+    const [line, offset] = this.quill.getLine(range.index);
+    if (line && line.length() > 1) {
+      const lineEnd = range.index - offset + line.length() - 1;
+      this.quill.insertText(lineEnd, '\n', 'user');
+      this.quill.formatLine(lineEnd + 1, 1, { header: false, list: false, blockquote: false, 'code-block': false }, 'user');
+      this.quill.setSelection(lineEnd + 1, 0, 'silent');
+    }
+    table.insertTable(3, 3);
+  }
+
+  /**
+   * Run a row/column action of Quill's table module on the table at the
+   * cursor.
+   * @param {string} action - Method name, e.g. 'insertRowBelow'
+   */
+  tableAction(action) {
+    if (this.isPlainTextFile) return;
+    const table = this.quill.getModule('table');
+    if (!table || typeof table[action] !== 'function') return;
+    this.quill.focus();
+    table[action]();
+    this.updateContextualToolbar();
+  }
+
+  // ---- Pictures ---------------------------------------------------------------
+
+  /**
+   * Clipboard matcher for <img>: keep pictures the app stored and inline
+   * image data (stored as a file right after the paste), drop everything
+   * else — a pasted web image would only ever show as broken, because the
+   * app never loads anything from the internet.
+   */
+  imageMatcher(node, delta) {
+    const Delta = Quill.import('delta');
+    const src = node.getAttribute('src') || '';
+    if (!isAllowedImageSrc(src)) {
+      if (!this.preserveWhitespace && /^https?:/i.test(src) && !this.skippedWebImages) {
+        this.skippedWebImages = true;
+        setTimeout(() => {
+          this.skippedWebImages = false;
+          showToast('Pictures from web pages can\'t be pasted — save the picture first, then drop it in', 'info', 6000);
+        }, 0);
+      }
+      return new Delta();
+    }
+    return delta;
+  }
+
+  /** Insert pictures chosen in the system file picker. */
+  async pickImages() {
+    if (this.isPlainTextFile) return;
+    const range = this.quill.getSelection(true);
+    const target = this.activeFile;
+    const result = await this.fileService.pickImages();
+    if (result && result.errors && result.errors.length > 0) {
+      showToast(result.errors[0], 'error');
+    }
+    if (!result || !result.success || !Array.isArray(result.urls)) return;
+    if (this.activeFile !== target) return;
+    this.insertImageUrls(range ? range.index : this.quill.getLength() - 1, result.urls);
+  }
+
+  /**
+   * Store dropped or pasted picture files, then insert them.
+   * @param {{index: number}} range - Where they were dropped / pasted
+   * @param {File[]} files
+   */
+  async insertImageFiles(range, files) {
+    if (this.isPlainTextFile) {
+      showToast('Plain text notes can hold text only — pictures need a rich text note', 'info');
+      return;
+    }
+    const target = this.activeFile;
+    const urls = [];
+    for (const file of files) {
+      if (file.size > MAX_IMAGE_BYTES) {
+        showToast(`"${file.name || 'Picture'}" is larger than 25 MB`, 'error');
+        continue;
+      }
+      try {
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        const result = await this.fileService.saveImage(bytes);
+        if (result && result.success) urls.push(result.url);
+        else showToast((result && result.error) || 'Could not add the picture', 'error');
+      } catch (error) {
+        console.error('Error storing a picture:', error);
+        showToast('Could not add the picture', 'error');
+      }
+    }
+    if (urls.length === 0 || this.activeFile !== target) return;
+    const index = range && typeof range.index === 'number'
+      ? range.index
+      : Math.max(0, this.quill.getLength() - 1);
+    this.insertImageUrls(index, urls);
+  }
+
+  /**
+   * Insert stored pictures at an index, each on the line it lands on.
+   * @param {number} index
+   * @param {string[]} urls
+   */
+  insertImageUrls(index, urls) {
+    let at = Math.min(index, Math.max(0, this.quill.getLength() - 1));
+    // A picture gets a line of its own rather than sitting inside a
+    // sentence (or a heading) next to the text
+    const text = this.quill.getText();
+    if (at > 0 && text[at - 1] !== '\n') {
+      this.quill.insertText(at, '\n', 'user');
+      at += 1;
+    }
+    const start = at;
+    for (const url of urls) {
+      this.quill.insertEmbed(at, 'image', url, 'user');
+      at += 1;
+    }
+    if (this.quill.getText(at, 1) !== '\n') {
+      this.quill.insertText(at, '\n', 'user');
+    }
+    // Don't let a picture inherit heading size from the line it landed in
+    // (only the picture's own line; the text after it keeps its heading)
+    this.quill.formatLine(start, at - start, 'header', false, 'user');
+    this.quill.setSelection(at + 1 <= this.quill.getLength() - 1 ? at + 1 : at, 0, 'user');
+  }
+
+  /**
+   * Replace pictures pasted as inline data (copied from a browser or
+   * another app) with stored files, so notes stay small. Runs after the
+   * paste; until it finishes the picture simply shows from its data.
+   */
+  async storeInlineImages() {
+    if (this.storingImages) {
+      this.storeImagesAgain = true;
+      return;
+    }
+    this.storingImages = true;
+    try {
+      do {
+        this.storeImagesAgain = false;
+        const target = this.activeFile;
+        const sources = new Set();
+        for (const op of this.quill.getContents().ops) {
+          if (op.insert && typeof op.insert === 'object' && typeof op.insert.image === 'string' &&
+              op.insert.image.startsWith('data:')) {
+            sources.add(op.insert.image);
+          }
+        }
+        const stored = new Map();
+        for (const src of sources) {
+          const bytes = dataUrlToBytes(src);
+          if (!bytes || bytes.length > MAX_IMAGE_BYTES) continue;
+          const result = await this.fileService.saveImage(bytes);
+          if (result && result.success) stored.set(src, result.url);
+        }
+        if (this.activeFile !== target || this.isPlainTextFile || stored.size === 0) continue;
+
+        // Swap each one in place, keeping its size
+        const Delta = Quill.import('delta');
+        let index = 0;
+        let change = new Delta();
+        let last = 0;
+        for (const op of this.quill.getContents().ops) {
+          const length = typeof op.insert === 'string' ? op.insert.length : 1;
+          const src = op.insert && typeof op.insert === 'object' ? op.insert.image : undefined;
+          if (src && stored.has(src)) {
+            change = change.retain(index - last).delete(1).insert({ image: stored.get(src) }, op.attributes || undefined);
+            last = index + 1;
+          }
+          index += length;
+        }
+        this.quill.updateContents(change, 'user');
+      } while (this.storeImagesAgain);
+    } catch (error) {
+      console.error('Error storing pasted pictures:', error);
+    } finally {
+      this.storingImages = false;
+    }
+  }
+
+  /**
+   * Size buttons that appear when a picture is clicked: Small, Medium,
+   * Large, Full width — and Remove.
+   */
+  setupImageTools() {
+    const tools = document.createElement('div');
+    tools.className = 'image-tools';
+    tools.setAttribute('role', 'toolbar');
+    tools.setAttribute('aria-label', 'Picture size');
+    const sizes = [
+      { label: 'S', title: 'Small', width: '30%' },
+      { label: 'M', title: 'Medium', width: '50%' },
+      { label: 'L', title: 'Large', width: '75%' },
+      { label: 'Full', title: 'Full width', width: false }
+    ];
+    for (const size of sizes) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = size.label;
+      button.title = size.title;
+      button.dataset.width = size.width || '';
+      button.addEventListener('mousedown', (event) => event.preventDefault());
+      button.addEventListener('click', () => this.resizeSelectedImage(size.width));
+      tools.appendChild(button);
+    }
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'image-tools-remove';
+    remove.textContent = 'Remove';
+    remove.title = 'Remove picture';
+    remove.addEventListener('mousedown', (event) => event.preventDefault());
+    remove.addEventListener('click', () => this.removeSelectedImage());
+    tools.appendChild(remove);
+
+    this.quill.container.appendChild(tools);
+    this.imageTools = tools;
+    this.selectedImage = null;
+
+    this.quill.root.addEventListener('click', (event) => {
+      const img = event.target instanceof HTMLImageElement ? event.target : null;
+      if (img && !this.isPlainTextFile && this.quill.root.contains(img)) {
+        this.showImageTools(img);
+      } else {
+        this.hideImageTools();
+      }
+    });
+    this.quill.root.addEventListener('scroll', () => this.hideImageTools());
+    this.quill.on('text-change', () => {
+      if (this.selectedImage && !this.quill.root.contains(this.selectedImage)) this.hideImageTools();
+      else if (this.selectedImage) this.positionImageTools();
+    });
+  }
+
+  showImageTools(img) {
+    this.selectedImage = img;
+    const current = img.getAttribute('width') || '';
+    this.imageTools.querySelectorAll('button[data-width]').forEach((button) => {
+      button.classList.toggle('active', button.dataset.width === current);
+    });
+    this.imageTools.classList.add('visible');
+    this.positionImageTools();
+  }
+
+  positionImageTools() {
+    if (!this.selectedImage) return;
+    const box = this.selectedImage.getBoundingClientRect();
+    const host = this.quill.container.getBoundingClientRect();
+    this.imageTools.style.top = `${Math.max(4, box.top - host.top + 8)}px`;
+    this.imageTools.style.left = `${Math.max(4, box.left - host.left + 8)}px`;
+  }
+
+  hideImageTools() {
+    this.selectedImage = null;
+    if (this.imageTools) this.imageTools.classList.remove('visible');
+  }
+
+  /** @returns {number|null} Index of the picture the tools belong to */
+  selectedImageIndex() {
+    if (!this.selectedImage || !this.quill.root.contains(this.selectedImage)) return null;
+    const blot = Quill.find(this.selectedImage);
+    return blot ? this.quill.getIndex(blot) : null;
+  }
+
+  resizeSelectedImage(width) {
+    const index = this.selectedImageIndex();
+    if (index === null) return this.hideImageTools();
+    this.quill.formatText(index, 1, 'width', width || false, 'user');
+    this.showImageTools(this.selectedImage);
+  }
+
+  removeSelectedImage() {
+    const index = this.selectedImageIndex();
+    this.hideImageTools();
+    if (index === null) return;
+    this.quill.deleteText(index, 1, 'user');
   }
 
   /**
@@ -449,6 +1088,10 @@ export class EditorComponent {
     const toolbar = this.elements.toolbarElement;
     if (toolbar) {
       toolbar.classList.toggle('toolbar-disabled', isPlain);
+      toolbar.querySelectorAll('select').forEach((select) => {
+        select.disabled = isPlain;
+      });
+      if (isPlain && this.closeTextStylePanel) this.closeTextStylePanel();
       toolbar.querySelectorAll('button').forEach((btn) => {
         // Undo/redo are valid operations for plain text notes — only
         // FORMATTING buttons are disabled. (Keyboard undo worked anyway;
@@ -460,6 +1103,8 @@ export class EditorComponent {
     if (this.plainTextBadge) {
       this.plainTextBadge.classList.toggle('visible', isPlain);
     }
+    if (isPlain && this.tableTools) this.tableTools.classList.remove('visible');
+    this.hideImageTools();
   }
 
   /**
@@ -1124,11 +1769,20 @@ export class EditorComponent {
 
     try {
       const name = displayName(this.activeFile, { stripAllExtensions: true });
+      // Pictures are copied into an "images" folder next to the export
+      const imageNames = [];
       const markdown = this.isPlainTextFile
         ? this.quill.getText()
-        : deltaToMarkdown(this.quill.getContents().ops);
+        : deltaToMarkdown(this.quill.getContents().ops, {
+          image: (src) => {
+            const match = STORED_IMAGE.exec(src || '');
+            if (!match) return null;
+            imageNames.push(match[1]);
+            return `images/${match[1]}`;
+          }
+        });
 
-      const result = await this.fileService.exportNote(name, markdown);
+      const result = await this.fileService.exportNote(name, markdown, imageNames);
       if (result.success) {
         showToast(`Exported to ${baseName(result.path)}`, 'success');
       } else if (!result.cancelled) {

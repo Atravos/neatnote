@@ -2,6 +2,7 @@ const { ipcMain, dialog, shell, app } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const fileSystem = require('./fileSystem');
+const images = require('./images');
 
 // Debug logging — enable by launching with NEATNOTE_DEBUG=1
 const DEBUG = process.env.NEATNOTE_DEBUG === '1';
@@ -208,7 +209,53 @@ function setupIpcHandlers({ userDataPath, store, sortOrders, isTrustedSender, ge
   // Export the current note to a file the user picks. The destination comes
   // only from the native save dialog shown here — the renderer supplies a
   // suggested file name and the text, never a path.
-  handle('export-note', async (event, suggestedName, content) => {
+  // ---- Pictures in notes --------------------------------------------------------
+
+  handle('save-image', async (event, bytes) => {
+    if (!(bytes instanceof Uint8Array) || bytes.length === 0 || bytes.length > images.MAX_IMAGE_BYTES) {
+      return { success: false, error: bytes && bytes.length > images.MAX_IMAGE_BYTES
+        ? 'That image is larger than 25 MB'
+        : 'Invalid image' };
+    }
+    return images.saveImage(Buffer.from(bytes), fileSystem.getNotesRoot(userDataPath), fileSystem.atomicWrite);
+  });
+
+  handle('pick-images', async () => {
+    const options = {
+      title: 'Insert picture',
+      properties: ['openFile', 'multiSelections'],
+      filters: [{ name: 'Pictures', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp'] }]
+    };
+    const win = getMainWindow();
+    const { canceled, filePaths } = win
+      ? await dialog.showOpenDialog(win, options)
+      : await dialog.showOpenDialog(options);
+    if (canceled || !Array.isArray(filePaths) || filePaths.length === 0) return { success: false, cancelled: true };
+
+    const urls = [];
+    const errors = [];
+    for (const filePath of filePaths.slice(0, 20)) {
+      try {
+        const stat = await fs.promises.stat(filePath);
+        if (!stat.isFile() || stat.size > images.MAX_IMAGE_BYTES) {
+          errors.push(`${path.basename(filePath)} is larger than 25 MB`);
+          continue;
+        }
+        const result = await images.saveImage(
+          await fs.promises.readFile(filePath),
+          fileSystem.getNotesRoot(userDataPath),
+          fileSystem.atomicWrite
+        );
+        if (result.success) urls.push(result.url);
+        else errors.push(`${path.basename(filePath)}: ${result.error}`);
+      } catch (error) {
+        errors.push(`${path.basename(filePath)} could not be read`);
+      }
+    }
+    return { success: urls.length > 0, urls, errors, error: errors[0] };
+  });
+
+  handle('export-note', async (event, suggestedName, content, imageNames) => {
     if (typeof content !== 'string' || Buffer.byteLength(content, 'utf8') > fileSystem.MAX_NOTE_BYTES) {
       return { success: false, error: 'Invalid export content' };
     }
@@ -239,6 +286,11 @@ function setupIpcHandlers({ userDataPath, store, sortOrders, isTrustedSender, ge
     // A plain write: the destination is outside the notes folder, where
     // leaving a temp file behind on failure would be littering
     await fs.promises.writeFile(filePath, content, 'utf8');
+    // Pictures go into an "images" folder next to the Markdown file, which
+    // links to them as images/<name>
+    if (Array.isArray(imageNames) && imageNames.length > 0) {
+      await images.copyImagesForExport(imageNames.slice(0, 1000), fileSystem.getNotesRoot(userDataPath), path.dirname(filePath));
+    }
     try {
       store.set('lastExportDir', path.dirname(filePath));
     } catch (error) {

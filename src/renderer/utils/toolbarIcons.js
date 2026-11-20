@@ -73,5 +73,47 @@ export const toolbarIcons = {
   // "T" with a strike-out mark: remove formatting from the selection
   clearFormat: stroke(
     `<path d="M5 6V4.5h11V6"/><line x1="10.5" y1="4.5" x2="8.5" y2="19.5"/><line x1="6" y1="19.5" x2="11" y2="19.5"/><line x1="15" y1="14" x2="20.5" y2="19.5"/><line x1="20.5" y1="14" x2="15" y2="19.5"/>`
-  )
+  ),
+
+  checkList: stroke(
+    `<rect x="3.5" y="4.5" width="6" height="6" rx="1.5"/><polyline points="4.8 7.6 6.2 9 8.4 6"/><rect x="3.5" y="13.5" width="6" height="6" rx="1.5"/><line x1="13" y1="7.5" x2="21" y2="7.5"/><line x1="13" y1="16.5" x2="21" y2="16.5"/>`
+  ),
+
+  image: stroke(
+    `<rect x="3" y="4.5" width="18" height="15" rx="2.5"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="M21 15.5l-5-5-8.5 9"/>`
+  ),
+
+  table: stroke(
+    `<rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="9.5" x2="21" y2="9.5"/><line x1="3" y1="14.75" x2="21" y2="14.75"/><line x1="9" y1="4" x2="9" y2="20"/><line x1="15" y1="4" x2="15" y2="20"/>`
+  ),
+
+  rowAbove: stroke(
+    `<rect x="3" y="12" width="18" height="8" rx="1.5"/><line x1="12" y1="3" x2="12" y2="9"/><line x1="9" y1="6" x2="15" y2="6"/>`
+  ),
+
+  rowBelow: stroke(
+    `<rect x="3" y="4" width="18" height="8" rx="1.5"/><line x1="12" y1="15" x2="12" y2="21"/><line x1="9" y1="18" x2="15" y2="18"/>`
+  ),
+
+  colLeft: stroke(
+    `<rect x="12" y="3" width="8" height="18" rx="1.5"/><line x1="3" y1="12" x2="9" y2="12"/><line x1="6" y1="9" x2="6" y2="15"/>`
+  ),
+
+  colRight: stroke(
+    `<rect x="4" y="3" width="8" height="18" rx="1.5"/><line x1="15" y1="12" x2="21" y2="12"/><line x1="18" y1="9" x2="18" y2="15"/>`
+  ),
+
+  deleteRow: stroke(
+    `<rect x="3" y="8" width="18" height="8" rx="1.5"/><line x1="10" y1="10" x2="14" y2="14"/><line x1="14" y1="10" x2="10" y2="14"/>`
+  ),
+
+  deleteCol: stroke(
+    `<rect x="8" y="3" width="8" height="18" rx="1.5"/><line x1="10" y1="10" x2="14" y2="14"/><line x1="14" y1="10" x2="10" y2="14"/>`
+  ),
+
+  deleteTable: stroke(
+    `<rect x="3" y="4" width="18" height="16" rx="2"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/>`
+  ),
+
+  textStyle: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><text x="1.5" y="17.5" font-size="15" font-weight="600" font-family="Georgia, 'Times New Roman', serif" fill="currentColor">A</text><text x="12.5" y="17.5" font-size="11" font-weight="600" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" fill="currentColor">a</text></svg>`,
 };

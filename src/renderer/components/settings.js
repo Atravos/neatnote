@@ -2,6 +2,8 @@ import { icons } from '../utils/icons.js';
 import { showToast } from '../services/toast.js';
 import { trapFocus } from './modals.js';
 import { focusWhenReady, restoreFocus } from '../utils/focus.js';
+import { AUTO_THEME } from '../services/themeService.js';
+import { FONTS, DEFAULT_SIZES, loadTypographyDefaults, saveTypographyDefaults } from '../utils/typography.js';
 
 /**
  * SettingsComponent - Manages application settings
@@ -13,7 +15,7 @@ export class SettingsComponent {
    * @param {HTMLElement} elements.settingsIcon - Settings icon element
    * @param {HTMLElement} elements.settingsOverlay - Settings overlay element
    * @param {HTMLButtonElement} elements.closeButton - Close button element
-   * @param {NodeList} elements.themeOptions - Theme option elements
+   * @param {HTMLElement} elements.themeContainer - Where the theme tiles go
    * @param {ThemeService} themeService - Theme service instance
    * @param {FileService} fileService - File service instance
    */
@@ -24,6 +26,7 @@ export class SettingsComponent {
     this.previouslyFocused = null;
 
     this.setupSettings();
+    this.createWritingSection();
     this.createNotesSection();
     this.createUpdatesSection();
     this.createUninstallButton();
@@ -54,7 +57,8 @@ export class SettingsComponent {
    */
   setupSettings() {
     try {
-      const { settingsIcon, settingsOverlay, closeButton, themeOptions } = this.elements;
+      const { settingsIcon, settingsOverlay, closeButton } = this.elements;
+      const themeOptions = this.buildThemeOptions();
 
       // Insert the SVG into the settings icon
       if (settingsIcon) {
@@ -107,7 +111,7 @@ export class SettingsComponent {
       if (themeOptions && themeOptions.length > 0) {
         const choose = (option) => {
           const theme = option.getAttribute('data-theme');
-          const applied = this.themeService.applyTheme(theme);
+          const applied = this.themeService.applyPreference(theme);
           this.themeService.saveThemePreference(applied);
           this.updateThemeUI(applied);
         };
@@ -129,6 +133,8 @@ export class SettingsComponent {
 
       // Apply the saved theme (the one place the theme is applied at startup)
       this.updateThemeUI(this.themeService.initialize());
+      // "Auto" follows the computer switching between light and dark
+      this.themeService.watchSystemTheme();
       // If the saved choice was lost, restore it from the settings file
       this.themeService.recoverMissingPreference().then((recovered) => {
         if (recovered) this.updateThemeUI(recovered);
@@ -166,6 +172,55 @@ export class SettingsComponent {
    * "Your notes" section: notes are ordinary files on this computer, and
    * this is the way to get to them.
    */
+  /**
+   * "Writing": the font and size new text uses. Text given its own font
+   * or size from the toolbar keeps it.
+   */
+  createWritingSection() {
+    try {
+      const body = this.getSettingsBody();
+      if (!body) return;
+      const section = this.createSection('Writing');
+      const current = loadTypographyDefaults();
+
+      const row = document.createElement('div');
+      row.className = 'settings-row settings-writing';
+
+      const makeSelect = (labelText, id, entries, value, onChange) => {
+        const label = document.createElement('label');
+        label.className = 'settings-field';
+        label.textContent = labelText;
+        const select = document.createElement('select');
+        select.className = 'settings-select';
+        select.id = id;
+        for (const entry of entries) {
+          const option = document.createElement('option');
+          option.value = entry.id;
+          option.textContent = entry.label;
+          if (entry.stack) option.style.fontFamily = entry.stack;
+          select.appendChild(option);
+        }
+        select.value = value;
+        select.addEventListener('change', () => onChange(select.value));
+        label.appendChild(select);
+        row.appendChild(label);
+      };
+
+      makeSelect('Font', 'default-font', FONTS, current.font, (font) => saveTypographyDefaults({ font }));
+      makeSelect('Text size', 'default-size', DEFAULT_SIZES, current.size, (size) => saveTypographyDefaults({ size }));
+      section.appendChild(row);
+
+      const note = document.createElement('p');
+      note.className = 'settings-note settings-fineprint';
+      note.textContent = 'Used for all text that doesn\'t have its own font or size. To change part of a note, select it and use the toolbar.';
+      section.appendChild(note);
+
+      body.appendChild(section);
+    } catch (error) {
+      console.error('Error creating writing section:', error);
+    }
+  }
+
   createNotesSection() {
     try {
       const body = this.getSettingsBody();
@@ -374,14 +429,110 @@ export class SettingsComponent {
   }
 
   /**
+   * Build one tile per theme (plus "Auto") from the theme service, and the
+   * light/dark pickers shown while Auto is selected.
+   * @returns {HTMLElement[]} The tiles
+   */
+  buildThemeOptions() {
+    const container = this.elements.themeContainer;
+    if (!container) return [];
+    container.innerHTML = '';
+
+    const makeTile = (id, label) => {
+      const tile = document.createElement('div');
+      tile.className = 'theme-option';
+      tile.setAttribute('data-theme', id);
+      tile.setAttribute('aria-label', `${label} theme`);
+      const preview = document.createElement('div');
+      preview.className = 'theme-preview';
+      preview.innerHTML = '<div class="theme-preview-sidebar"></div><div class="theme-preview-content">' +
+        '<span class="theme-preview-line"></span><span class="theme-preview-dot"></span></div>';
+      const name = document.createElement('div');
+      name.className = 'theme-label';
+      name.textContent = label;
+      tile.append(preview, name);
+      container.appendChild(tile);
+      return tile;
+    };
+
+    const themes = this.themeService.listThemes();
+    const tiles = themes.map(({ id, label, palette }) => {
+      const tile = makeTile(id, label);
+      tile.style.setProperty('--swatch-bg', palette.bg);
+      tile.style.setProperty('--swatch-sidebar', palette.sidebar);
+      tile.style.setProperty('--swatch-text', palette.text);
+      tile.style.setProperty('--swatch-accent', palette.accent);
+      return tile;
+    });
+
+    // "Auto" tile: half the chosen light theme, half the chosen dark one
+    const autoTile = makeTile(AUTO_THEME, 'Auto');
+    autoTile.title = "Follows your computer's light or dark mode";
+    const autoPreview = autoTile.querySelector('.theme-preview');
+    autoPreview.classList.add('theme-preview-auto');
+    autoPreview.innerHTML = '<span class="theme-preview-dot"></span><span class="theme-preview-dot"></span>';
+    tiles.push(autoTile);
+
+    // Light/dark pickers for Auto
+    const pair = document.createElement('div');
+    pair.className = 'auto-theme-pair';
+    const makePicker = (labelText, wantDark, side) => {
+      const label = document.createElement('label');
+      label.textContent = labelText;
+      const select = document.createElement('select');
+      select.className = 'settings-select';
+      select.id = `auto-theme-${side}`;
+      for (const theme of themes.filter((t) => t.dark === wantDark)) {
+        const option = document.createElement('option');
+        option.value = theme.id;
+        option.textContent = theme.label;
+        select.appendChild(option);
+      }
+      select.addEventListener('change', () => {
+        this.themeService.setAutoPair({ [side]: select.value });
+        this.refreshAutoTile();
+        if (this.themeService.loadThemePreference() === AUTO_THEME) {
+          this.themeService.applyPreference(AUTO_THEME);
+        }
+      });
+      label.appendChild(select);
+      pair.appendChild(label);
+      return select;
+    };
+    this.autoLightSelect = makePicker('Light:', false, 'light');
+    this.autoDarkSelect = makePicker('Dark:', true, 'dark');
+    container.insertAdjacentElement('afterend', pair);
+    this.autoPairRow = pair;
+    this.autoTile = autoTile;
+    this.refreshAutoTile();
+
+    this.themeOptions = tiles;
+    return tiles;
+  }
+
+  /** Show the chosen Auto pair in the Auto tile and its pickers */
+  refreshAutoTile() {
+    if (!this.autoTile) return;
+    const pair = this.themeService.getAutoPair();
+    const byId = Object.fromEntries(this.themeService.listThemes().map((t) => [t.id, t.palette]));
+    this.autoTile.style.setProperty('--swatch-bg', byId[pair.light].bg);
+    this.autoTile.style.setProperty('--swatch-bg-2', byId[pair.dark].bg);
+    this.autoTile.style.setProperty('--swatch-accent', byId[pair.light].accent);
+    this.autoTile.style.setProperty('--swatch-accent-2', byId[pair.dark].accent);
+    if (this.autoLightSelect) this.autoLightSelect.value = pair.light;
+    if (this.autoDarkSelect) this.autoDarkSelect.value = pair.dark;
+  }
+
+  /**
    * Update the UI to reflect current theme
-   * @param {string} theme - Current theme
+   * @param {string} theme - Current theme (or "auto")
    */
   updateThemeUI(theme) {
-    this.elements.themeOptions.forEach((option) => {
+    (this.themeOptions || []).forEach((option) => {
       const selected = option.getAttribute('data-theme') === theme;
       option.classList.toggle('selected', selected);
       option.setAttribute('aria-checked', String(selected));
     });
+    if (this.autoPairRow) this.autoPairRow.classList.toggle('visible', theme === AUTO_THEME);
   }
 }

@@ -19,13 +19,16 @@ NeatNote sits between a bare text editor and an all-in-one workspace: folders, c
 
 ## Features
 
-- **Rich formatting** — headings, bold/italic/underline/strikethrough, bulleted and numbered lists, quotes, code blocks, links and horizontal rules
+- **Rich formatting** — headings, bold/italic/underline/strikethrough, bulleted and numbered lists, checklists, quotes, code blocks, links and horizontal rules
+- **Fonts and sizes** — 10 fonts (8 bundled, so they look the same everywhere) and sizes from 12 to 40 for any selected text, plus a default font and size in Settings
+- **Pictures** — paste, drop or insert; resize with a click; stored as ordinary image files next to your notes
+- **Tables** — add rows and columns from the toolbar; Tab and Enter move between cells
 - **Nested folders** — drag and drop to move or reorder; right-click to create, rename, reveal or trash
 - **Full-text search** — searches inside every note and shows the matching text
-- **Export to Markdown** — any note, one click (`Ctrl/⌘ + Shift + E`)
+- **Export to Markdown** — any note, one click (`Ctrl/⌘ + Shift + E`), including checklists, tables and pictures
 - **Saves as you type** — pending edits are written before the window closes; deleted items go to the system trash
 - **Safe with other programs** — if a note is changed outside NeatNote, the change is picked up; if both versions were edited, both are kept
-- **5 themes** — Light, Dark, Paper, Moss, Dusk
+- **12 themes** — Light, Dark, Paper, Moss, Dusk, Midnight, Slate, Sand, Rose, Ocean, Ember and High Contrast, plus **Auto** to follow your computer's light/dark setting
 - **Keyboard friendly** — arrow-key navigation in the sidebar, `F2` to rename, `Delete` to trash, standard formatting shortcuts
 - **Updates built in, if you allow it** — asks once whether to check GitHub for new versions; on Windows it downloads and installs the update for you (always with your OK)
 - **Private** — no account and no telemetry; spell check uses bundled dictionaries. NeatNote connects to nothing unless you allow the update check, and that check sends nothing about you or your notes
@@ -107,7 +110,7 @@ Installing from inside the app only happens in an installed Windows build; elsew
 | macOS | `~/Library/Application Support/NeatNote/notes` |
 | Linux | `~/.config/NeatNote/notes` |
 
-Formatted notes are saved as HTML fragments (`.html`); plain text notes (`.txt`) stay plain text. **Settings → Open notes folder** opens the folder directly.
+Formatted notes are saved as HTML fragments (`.html`); plain text notes (`.txt`) stay plain text. Pictures are saved as image files in a hidden `.neatnote-images` folder inside the notes folder. **Settings → Open notes folder** opens the folder directly.
 
 ## Project layout
 
@@ -116,7 +119,7 @@ src/main/       Electron main process: windows, menus, file system, IPC
 src/preload/    The only bridge between the page and the main process
 src/renderer/   The UI: editor (Quill), sidebar, dialogs, themes
 src/styles/     Stylesheets
-vendor/         Bundled Quill editor and spell-check dictionaries
+vendor/         Bundled Quill editor, fonts (OFL licensed) and spell-check dictionaries
 installer/      Windows installer hooks
 tests/          Unit and end-to-end tests
 docs/           Screenshots used in this README

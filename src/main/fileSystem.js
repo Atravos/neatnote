@@ -294,6 +294,8 @@ async function isSameFile(a, b) {
  */
 function isVisibleName(name) {
   if (name.startsWith('.') && name.endsWith('.tmp')) return false;
+  // Where pictures in notes are stored (see images.js) — not a note folder
+  if (name === '.neatnote-images') return false;
   return !OS_JUNK.test(name);
 }
 

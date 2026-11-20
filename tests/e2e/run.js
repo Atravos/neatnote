@@ -940,6 +940,267 @@ test('Markdown export writes the note to the chosen file', async () => {
   await saveNow();
 });
 
+// ---- 1.3: checklists, fonts and sizes, tables, pictures, themes ----------------
+
+const quillEval = (body) => js(`(() => { const q = Quill.find(document.getElementById('editor')); ${body} })()`);
+
+test('checklist: toolbar button makes a to-do; clicking the box ticks it and it is saved', async () => {
+  // A note of its own: earlier tests rename and move the seeded ones
+  fs.writeFileSync(notePath('features.html'), '<p>features</p>');
+  await reload();
+  await openNote('features.html');
+  await quillEval(`q.setContents([{ insert: 'Buy milk\\nCall Sam\\n' }], 'user'); q.setSelection(0, 12, 'user');`);
+  await click('#editor-toolbar .ql-list[value="check"]');
+  assertEqual(await js(`document.querySelectorAll('#editor li[data-list="unchecked"]').length`), 2, 'both lines become to-dos');
+  assert(await js(`document.querySelector('#editor-toolbar .ql-list[value="check"]').classList.contains('ql-active')`), 'button should show as on');
+
+  // Click where the box is drawn (it sits in the margin, left of the
+  // element's own position), and make sure that spot belongs to the box
+  const box = await js(`(() => {
+    const ui = document.querySelector('#editor li[data-list="unchecked"] > .ql-ui');
+    const r = ui.getBoundingClientRect();
+    const em = parseFloat(getComputedStyle(ui).fontSize);
+    const x = Math.round(r.left - 1.0 * em), y = Math.round(r.top + r.height / 2);
+    return { x, y, hit: document.elementFromPoint(x, y) === ui };
+  })()`);
+  assert(box.hit, 'the drawn checkbox is not clickable');
+  wc.sendInputEvent({ type: 'mouseDown', x: box.x, y: box.y, button: 'left', clickCount: 1 });
+  wc.sendInputEvent({ type: 'mouseUp', x: box.x, y: box.y, button: 'left', clickCount: 1 });
+  await sleep(120);
+  assertEqual(await js(`Array.from(document.querySelectorAll('#editor li')).map(li => li.dataset.list).join(',')`), 'checked,unchecked');
+  await saveNow();
+  assert(readNote('features.html').includes('data-list="checked"'), 'ticked state not saved');
+
+  await openNote('beta.html');
+  await openNote('features.html');
+  assertEqual(await js(`document.querySelectorAll('#editor li[data-list="checked"]').length`), 1, 'ticked state lost on reopen');
+
+  // Typing "[] " at the start of a line starts a to-do
+  await quillEval(`q.setContents([{ insert: '\\n' }], 'user'); q.setSelection(0, 0, 'user');`);
+  await typeKeys('[] shortcut');
+  assertEqual(await js(`document.querySelector('#editor li') && document.querySelector('#editor li').dataset.list`), 'unchecked');
+  await saveNow();
+});
+
+test('font and size of selected text, from the Aa panel; plain text notes can\'t use it', async () => {
+  await openNote('features.html');
+  await quillEval(`q.setContents([{ insert: 'Big words and small\\n' }], 'user'); q.setSelection(0, 9, 'user');`);
+  await click('#editor-toolbar .text-style-btn');
+  assert(await js(`document.querySelector('.text-style-panel').classList.contains('open')`), 'panel did not open');
+  assertEqual(await js(`JSON.stringify(Quill.find(document.getElementById('editor')).getSelection())`), '{"index":0,"length":9}', 'opening the panel lost the selection');
+  await js(`(() => {
+    const f = document.querySelector('select.ql-font'); f.value = 'lora'; f.dispatchEvent(new Event('change', { bubbles: true }));
+    const z = document.querySelector('select.ql-size'); z.value = '24px'; z.dispatchEvent(new Event('change', { bubbles: true }));
+  })()`);
+  assert(!(await js(`document.querySelector('.text-style-panel').classList.contains('open')`)), 'panel should close after a choice');
+  assertEqual(await quillEval(`return JSON.stringify(q.getFormat(0, 9));`), '{"font":"lora","size":"24px"}');
+  assertEqual(await quillEval(`return JSON.stringify(q.getFormat(12, 3));`), '{}', 'text outside the selection changed');
+  await saveNow();
+  const html = readNote('features.html');
+  assert(html.includes('ql-font-lora') && /font-size: ?24px/.test(html), 'font/size not saved: ' + html);
+  assert(await js(`document.fonts.check('24px "NeatNote Lora"')`), 'bundled font not loaded');
+
+  // Values outside the menus are not accepted (e.g. from pasted HTML)
+  await quillEval(`q.formatText(0, 3, { font: 'Comic Sans', size: '200px' }, 'user');`);
+  assertEqual(await quillEval(`return JSON.stringify(q.getFormat(0, 3));`), '{"font":"lora","size":"24px"}');
+
+  await openNote('gamma.txt');
+  await click('#editor-toolbar .text-style-btn');
+  assert(!(await js(`document.querySelector('.text-style-panel').classList.contains('open')`)), 'panel opened in a plain text note');
+  assert(await js(`document.querySelector('select.ql-font').disabled`), 'font menu should be off in plain text');
+});
+
+test('tables: insert, type, Tab and Enter move between cells, rows and columns, saved and reopened', async () => {
+  await openNote('features.html');
+  await quillEval(`q.setContents([{ insert: 'Before\\n' }], 'user'); q.setSelection(6, 0, 'user');`);
+  await click('#editor-toolbar .ql-table');
+  assertEqual(await js(`document.querySelectorAll('#editor table td').length`), 9, '3 x 3 table');
+  assert(await js(`document.querySelector('.toolbar-table-tools').classList.contains('visible')`), 'table tools should show inside a table');
+
+  await typeKeys('a'); await press('Tab'); await typeKeys('b');
+  await press('Enter'); await typeKeys('c');
+  const cells = () => js(`Array.from(document.querySelectorAll('#editor td')).map(td => td.textContent).join('|')`);
+  assertEqual(await cells(), 'a|b|||c||||', 'Enter should move to the cell below');
+  assertEqual(await js(`document.querySelector('#editor .ql-editor').firstElementChild.textContent`), 'Before', 'the line the table was added on should keep its text');
+
+  // Tab on the very last cell adds a row
+  await quillEval(`const tds = document.querySelectorAll('#editor td'); q.setSelection(q.getIndex(Quill.find(tds[tds.length - 1])), 0, 'user');`);
+  await press('Tab'); await typeKeys('d');
+  assertEqual(await js(`document.querySelectorAll('#editor tr').length`), 4);
+
+  await click('#editor-toolbar .ql-table-col-right');
+  assertEqual(await js(`document.querySelectorAll('#editor tr:first-child td').length`), 4, 'column not added');
+  await click('#editor-toolbar .ql-table-delete-row');
+  assertEqual(await js(`document.querySelectorAll('#editor tr').length`), 3, 'row not deleted');
+  assertEqual(await cells(), 'a||b||||c|||||', 'new column goes right of the cursor, deleted row is gone');
+  await saveNow();
+  assert(/<table[\s>]/.test(readNote('features.html')), 'table not saved');
+  const before = await cells();
+
+  await openNote('beta.html');
+  await openNote('features.html');
+  assertEqual(await js(`document.querySelectorAll('#editor td').length`), 12, 'table changed on reopen');
+  assertEqual(await cells(), before, 'cell text changed on reopen');
+
+  // Leaving the table hides its tools; Delete table removes it
+  await quillEval(`q.setSelection(0, 0, 'user');`);
+  await sleep(50);
+  assert(!(await js(`document.querySelector('.toolbar-table-tools').classList.contains('visible')`)), 'table tools should hide outside a table');
+  await quillEval(`q.setSelection(q.getIndex(Quill.find(document.querySelector('#editor td'))), 0, 'user');`);
+  await click('#editor-toolbar .ql-table-delete');
+  assertEqual(await js(`document.querySelectorAll('#editor table').length`), 0, 'table not deleted');
+  await saveNow();
+});
+
+const makePng = (w, h, color) => `(async () => {
+  const c = document.createElement('canvas'); c.width = ${w}; c.height = ${h};
+  const g = c.getContext('2d'); g.fillStyle = '${color}'; g.fillRect(0, 0, ${w}, ${h});
+  return new Promise((resolve) => c.toBlob(resolve, 'image/png'));
+})()`;
+
+test('pictures: dropped in, stored as a file, resized, saved, and hidden from the sidebar', async () => {
+  await openNote('features.html');
+  await quillEval(`q.setContents([{ insert: 'Heading' }, { insert: '\\n', attributes: { header: 2 } }, { insert: 'after\\n' }], 'user');`);
+  await js(`(async () => {
+    const blob = await ${makePng(320, 160, '#3355ff')};
+    const q = Quill.find(document.getElementById('editor'));
+    q.getModule('uploader').upload({ index: 7, length: 0 }, [new File([blob], 'pic.png', { type: 'image/png' })]);
+  })()`);
+  await waitFor(`!!document.querySelector('#editor img') && document.querySelector('#editor img').naturalWidth === 320`, { label: 'picture to load' });
+  const src = await js(`document.querySelector('#editor img').getAttribute('src')`);
+  assert(/^neatnote-image:\/\/local\/[0-9a-f]{32}\.png$/.test(src), 'unexpected address: ' + src);
+  const stored = path.join(notesRoot, '.neatnote-images', src.split('/').pop());
+  assert(fs.existsSync(stored), 'picture file not stored');
+  assertEqual(await js(`document.querySelector('#editor h2').textContent`), 'Heading', 'the heading should keep its text');
+  assertEqual(await js(`document.querySelector('#editor img').closest('h2')`), null, 'picture should not sit inside the heading');
+
+  // Click the picture for its size tools
+  await click('#editor img');
+  assert(await js(`document.querySelector('.image-tools').classList.contains('visible')`), 'size tools did not show');
+  await js(`Array.from(document.querySelectorAll('.image-tools button')).find(b => b.textContent === 'S').click()`);
+  assertEqual(await js(`document.querySelector('#editor img').getAttribute('width')`), '30%');
+  await saveNow();
+  const html = readNote('features.html');
+  assert(html.includes(src) && !html.includes('data:image'), 'note should refer to the file, not hold the picture');
+
+  // The hidden folder never shows in the sidebar
+  await reload();
+  assert(!(await js(`document.getElementById('folder-tree').textContent.includes('neatnote-images')`)), 'images folder visible');
+  await openNote('features.html');
+  await waitFor(`!!document.querySelector('#editor img') && document.querySelector('#editor img').naturalWidth === 320`, { label: 'picture after reload' });
+  assertEqual(await js(`document.querySelector('#editor img').getAttribute('width')`), '30%', 'size lost');
+
+  // Remove
+  await click('#editor img');
+  await js(`Array.from(document.querySelectorAll('.image-tools button')).find(b => b.textContent === 'Remove').click()`);
+  assertEqual(await js(`document.querySelectorAll('#editor img').length`), 0);
+  await saveNow();
+});
+
+test('pictures: pasted image data becomes a file; web pictures and non-images are refused', async () => {
+  await openNote('beta.html');
+  await js(`(async () => {
+    const blob = await ${makePng(40, 20, '#22aa66')};
+    const data = await new Promise((r) => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(blob); });
+    const q = Quill.find(document.getElementById('editor'));
+    q.setContents([{ insert: '\\n' }], 'user');
+    q.clipboard.dangerouslyPasteHTML(0, '<p>x</p><img src="' + data + '"><img src="https://example.com/track.png">', 'user');
+  })()`);
+  await waitFor(`Array.from(document.querySelectorAll('#editor img')).every(i => i.getAttribute('src').startsWith('neatnote-image:'))`, { label: 'pasted data stored as a file' });
+  assertEqual(await js(`document.querySelectorAll('#editor img').length`), 1, 'the web picture should be dropped');
+  await saveNow();
+  assert(!readNote('beta.html').includes('example.com'), 'web picture address saved');
+
+  const refused = await js(`window.api.saveImage(new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'))`);
+  assertEqual(refused.success, false, 'SVG/script must be refused');
+  const notOurs = await js(`fetch('neatnote-image://local/../config.json').then(r => r.status).catch(() => 'blocked')`);
+  assert(notOurs === 404 || notOurs === 'blocked', 'image protocol served something it should not: ' + notOurs);
+});
+
+test('Markdown export: tables, to-dos and pictures (copied next to the file)', async () => {
+  await openNote('features.html');
+  const url = await js(`(async () => {
+    const blob = await ${makePng(10, 10, '#000000')};
+    return (await window.api.saveImage(new Uint8Array(await blob.arrayBuffer()))).url;
+  })()`);
+  await quillEval(`q.setContents([
+    { insert: 'Plan\\n' },
+    { insert: 'Item' }, { insert: '\\n', attributes: { table: 'row-a' } },
+    { insert: 'Qty' }, { insert: '\\n', attributes: { table: 'row-a' } },
+    { insert: 'Apples' }, { insert: '\\n', attributes: { table: 'row-b' } },
+    { insert: '3' }, { insert: '\\n', attributes: { table: 'row-b' } },
+    { insert: 'Done' }, { insert: '\\n', attributes: { list: 'checked' } },
+    { insert: { image: ${JSON.stringify(url)} } }, { insert: '\\n' }
+  ], 'user');`);
+  saveDialogTarget = path.join(exportDir, 'with-extras.md');
+  await click('#export-btn');
+  await waitFor(() => fs.existsSync(saveDialogTarget), { label: 'exported file' });
+  await sleep(300);
+  const out = fs.readFileSync(saveDialogTarget, 'utf8');
+  const name = url.split('/').pop();
+  assert(out.includes('| Item | Qty |\n| --- | --- |\n| Apples | 3 |'), 'table not exported:\n' + out);
+  assert(out.includes('- [x] Done'), 'to-do not exported:\n' + out);
+  assert(out.includes(`![](images/${name})`), 'picture link not exported:\n' + out);
+  assert(fs.existsSync(path.join(exportDir, 'images', name)), 'picture not copied next to the export');
+  saveDialogTarget = null;
+  await saveNow();
+});
+
+test('12 themes plus Auto, which follows the system light/dark setting', async () => {
+  await openSettings();
+  const ids = await js(`Array.from(document.querySelectorAll('.theme-option')).map(t => t.dataset.theme).join(',')`);
+  assertEqual(ids.split(',').length, 13, 'expected 12 themes and Auto: ' + ids);
+  for (const id of ['midnight', 'slate', 'sand', 'rose', 'ocean', 'ember', 'highcontrast', 'auto']) {
+    assert(ids.split(',').includes(id), 'missing theme ' + id);
+  }
+  await click('.theme-option[data-theme="highcontrast"]');
+  assert(await js(`document.body.classList.contains('app-theme-highcontrast')`), 'High Contrast not applied');
+
+  electron.nativeTheme.themeSource = 'light';
+  await click('.theme-option[data-theme="auto"]');
+  assert(await js(`getComputedStyle(document.querySelector('.auto-theme-pair')).display !== 'none'`), 'Auto pickers should show');
+  await js(`(() => {
+    const l = document.getElementById('auto-theme-light'); l.value = 'sand'; l.dispatchEvent(new Event('change', { bubbles: true }));
+    const d = document.getElementById('auto-theme-dark'); d.value = 'ember'; d.dispatchEvent(new Event('change', { bubbles: true }));
+  })()`);
+  await waitFor(`document.body.classList.contains('app-theme-sand')`, { label: 'light half of Auto' });
+  electron.nativeTheme.themeSource = 'dark';
+  await waitFor(`document.body.classList.contains('app-theme-ember')`, { label: 'switch with the system' });
+  await closeSettings();
+
+  await reload();
+  assert(await js(`document.body.classList.contains('app-theme-ember')`), 'Auto not restored after reload (dark)');
+  assertEqual(await js(`localStorage.getItem('simplenote-theme')`), 'auto');
+  electron.nativeTheme.themeSource = 'light';
+  await waitFor(`document.body.classList.contains('app-theme-sand')`, { label: 'switch back after reload' });
+
+  // Back to the default for the rest of the tests
+  electron.nativeTheme.themeSource = 'system';
+  await openSettings();
+  await click('.theme-option[data-theme="light"]');
+  await closeSettings();
+});
+
+test('default font and size in Settings apply to the whole note and are remembered', async () => {
+  await openNote('features.html');
+  await openSettings();
+  await js(`(() => {
+    const f = document.getElementById('default-font'); f.value = 'atkinson'; f.dispatchEvent(new Event('change', { bubbles: true }));
+    const z = document.getElementById('default-size'); z.value = 'xlarge'; z.dispatchEvent(new Event('change', { bubbles: true }));
+  })()`);
+  const style = () => js(`(() => { const s = getComputedStyle(document.querySelector('#editor .ql-editor')); return s.fontFamily.split(',')[0] + ' ' + s.fontSize; })()`);
+  assertEqual(await style(), '"NeatNote Atkinson Hyperlegible" 21px');
+  await closeSettings();
+  await reload();
+  assertEqual(await style(), '"NeatNote Atkinson Hyperlegible" 21px', 'not remembered');
+  await openSettings();
+  await js(`(() => {
+    const f = document.getElementById('default-font'); f.value = 'serif'; f.dispatchEvent(new Event('change', { bubbles: true }));
+    const z = document.getElementById('default-size'); z.value = 'normal'; z.dispatchEvent(new Event('change', { bubbles: true }));
+  })()`);
+  await closeSettings();
+});
+
 // ---- Updates ---------------------------------------------------------------------
 
 const updateStatus = () => js(`document.getElementById('update-status').textContent`);

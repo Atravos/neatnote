@@ -13,6 +13,13 @@
 (function applySavedPalette() {
   try {
     var raw = localStorage.getItem('neatnote-theme-palette');
+    // "Auto" follows the computer's light/dark mode: pick the matching one
+    // of the two palettes saved for it
+    if (localStorage.getItem('simplenote-theme') === 'auto') {
+      var both = JSON.parse(localStorage.getItem('neatnote-theme-palette-auto') || 'null');
+      var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (both && both[dark ? 'dark' : 'light']) raw = JSON.stringify(both[dark ? 'dark' : 'light']);
+    }
     if (!raw) return;
     var palette = JSON.parse(raw);
     if (!palette || typeof palette !== 'object') return;
