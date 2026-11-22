@@ -14,7 +14,7 @@
 NeatNote sits between a bare text editor and an all-in-one workspace: folders, clean formatting and full-text search, without accounts, sync services or subscriptions. Your notes are ordinary files on your own computer.
 
 <p align="center">
-  <img src="docs/screenshots/editor-light.jpg" alt="NeatNote showing a formatted note with headings, lists and a code block, with nested folders in the sidebar" width="900">
+  <img src="docs/screenshots/editor-light.jpg" alt="NeatNote showing a trip plan with a picture, a handwritten-style note and a packing checklist, with nested folders in the sidebar" width="900">
 </p>
 
 ## Features
@@ -37,16 +37,16 @@ NeatNote sits between a bare text editor and an all-in-one workspace: folders, c
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/screenshots/search.jpg" alt="Full-text search listing matching notes with the matching words highlighted"><p align="center"><sub>Search inside every note</sub></p></td>
-    <td width="50%"><img src="docs/screenshots/organize.jpg" alt="Nested folders in the sidebar with the right-click menu open"><p align="center"><sub>Nested folders and right-click menus</sub></p></td>
+    <td width="50%"><img src="docs/screenshots/formatting.jpg" alt="A launch plan with headings, bold text, a numbered list, inline code, a code block and a quote"><p align="center"><sub>Headings, lists and code blocks · Dark theme</sub></p></td>
+    <td width="50%"><img src="docs/screenshots/pictures.jpg" alt="A weekend trip note with a picture of a lake and a packing checklist"><p align="center"><sub>Pictures and checklists · Paper theme</sub></p></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/screenshots/editor-dark.jpg" alt="NeatNote in the Dark theme"><p align="center"><sub>Dark</sub></p></td>
-    <td width="50%"><img src="docs/screenshots/editor-paper.jpg" alt="NeatNote in the Paper theme"><p align="center"><sub>Paper</sub></p></td>
+    <td width="50%"><img src="docs/screenshots/tables.jpg" alt="A reading list with a quote and a table of books, authors and status"><p align="center"><sub>Tables and quotes · Sand theme</sub></p></td>
+    <td width="50%"><img src="docs/screenshots/search.jpg" alt="Full-text search for April listing three notes with the matching words highlighted"><p align="center"><sub>Search inside every note · Ocean theme</sub></p></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/screenshots/editor-moss.jpg" alt="NeatNote in the Moss theme"><p align="center"><sub>Moss</sub></p></td>
-    <td width="50%"><img src="docs/screenshots/editor-dusk.jpg" alt="NeatNote in the Dusk theme"><p align="center"><sub>Dusk</sub></p></td>
+    <td width="50%"><img src="docs/screenshots/organize.jpg" alt="Nested folders in the sidebar with the right-click menu open on a folder"><p align="center"><sub>Nested folders and right-click menus · Slate theme</sub></p></td>
+    <td width="50%"><img src="docs/screenshots/fonts.jpg" alt="A gift ideas note in several fonts and sizes, with the font and size menu open"><p align="center"><sub>Fonts and sizes for any text · Dusk theme</sub></p></td>
   </tr>
 </table>
 
