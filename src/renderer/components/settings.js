@@ -40,6 +40,7 @@ export class SettingsComponent {
     if (this.isOpen()) return;
     this.previouslyFocused = document.activeElement;
     this.elements.settingsOverlay.classList.add('show');
+    if (this.refreshUpdatesState) this.refreshUpdatesState();
     // Focus inside the overlay so Escape and Tab work right away
     focusWhenReady(this.elements.closeButton, { stillWanted: () => this.isOpen() });
   }
@@ -325,12 +326,15 @@ export class SettingsComponent {
         setStatus(`NeatNote ${version} is ready to install.`, 'success');
       };
 
-      updates.getState().then((state) => {
+      // Re-read every time Settings opens: the update question can be
+      // answered after this panel was built, and the switch must show it
+      this.refreshUpdatesState = () => updates.getState().then((state) => {
         if (!state) return;
         version.textContent = `You have NeatNote ${state.version}.`;
         autoCheck.checked = state.autoCheck === true;
-        if (state.readyVersion) showReady(state.readyVersion);
-      });
+        if (state.readyVersion && !readyVersion) showReady(state.readyVersion);
+      }).catch(() => {});
+      this.refreshUpdatesState();
 
       autoCheck.addEventListener('change', async () => {
         const result = await updates.setAutoCheck(autoCheck.checked);

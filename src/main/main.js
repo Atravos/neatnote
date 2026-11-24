@@ -500,6 +500,9 @@ function createWindow() {
   rendererReady = false;
   const win = new BrowserWindow({
     ...bounds,
+    // Windows and macOS take the icon from the app bundle; Linux needs it set
+    // on the window, or an AppImage can show a generic icon in the taskbar
+    ...(process.platform === 'linux' ? { icon: path.join(__dirname, '../../assets/icon.png') } : {}),
     minWidth: 640,
     minHeight: 440,
     ...chromeOptions,

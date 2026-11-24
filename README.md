@@ -5,7 +5,7 @@
 <h1 align="center">NeatNote</h1>
 
 <p align="center">
-  A fast, private, local-first note-taking app for Windows and macOS.<br>
+  A fast, private, local-first note-taking app for Windows, macOS and Linux.<br>
   <a href="https://theneatnote.com">theneatnote.com</a>
 </p>
 
@@ -52,7 +52,7 @@ NeatNote sits between a bare text editor and an all-in-one workspace: folders, c
 
 ## Download
 
-Ready-to-install builds for Windows and macOS (Apple Silicon and Intel) are available at **[theneatnote.com](https://theneatnote.com)** for a one-time $9.99. Buying them funds development.
+Ready-to-install builds for Windows, macOS (Apple Silicon and Intel) and Linux (x64 AppImage and .deb) are available at **[theneatnote.com](https://theneatnote.com)** for a one-time $9.99. Buying them funds development.
 
 You're also welcome to build NeatNote yourself from this repository, for free.
 
@@ -72,7 +72,7 @@ Create installers (each platform must be built on that platform):
 ```bash
 npm run build:win      # dist/NeatNote-Setup-<version>.exe
 npm run build:mac      # dist/NeatNote-<version>-arm64.dmg and -x64.dmg
-npm run build:linux    # AppImage and .deb (unofficial)
+npm run build:linux    # dist/NeatNote-<version>-x86_64.AppImage and -amd64.deb
 ```
 
 Builds are not code-signed, so Windows SmartScreen and macOS Gatekeeper will warn on first launch.

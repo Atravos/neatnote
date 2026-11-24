@@ -1,3 +1,18 @@
+# NeatNote 1.4.0
+
+## New
+- **Linux.** Official builds for Linux (x64): an AppImage that runs without
+  installing, and a `.deb` for Debian and Ubuntu. Everything works the same
+  as on Windows and macOS. When an update is available, NeatNote opens the
+  download page (as on macOS).
+- **New app icon.** A note tucked into a folder, in place of the plain
+  document.
+
+## Fixed
+- Settings → Updates now shows your answer to "Check for updates
+  automatically?" right away. Before, it showed the old value until the
+  next restart (the answer itself was always saved).
+
 # NeatNote 1.3.0
 
 ## New

@@ -1,7 +1,7 @@
 {
   "name": "neatnote",
-  "version": "1.3.0",
-  "description": "A lightweight, local-first note-taking application",
+  "version": "1.4.0",
+  "description": "A scratchpad that stays organized: a local-first note-taking app",
   "main": "src/main/main.js",
   "homepage": "https://theneatnote.com",
   "author": {
@@ -31,7 +31,7 @@
   "build": {
     "appId": "com.neatnote.app",
     "productName": "NeatNote",
-    "copyright": "Copyright © NeatNote",
+    "copyright": "Copyright \u00a9 NeatNote",
     "files": [
       "src/**/*",
       "assets/**/*",
@@ -79,11 +79,25 @@
     },
     "linux": {
       "target": [
-        "AppImage",
-        "deb"
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "category": "Office",
-      "synopsis": "Lightweight local-first notes"
+      "synopsis": "A scratchpad that stays organized",
+      "maintainer": "NeatNote <theneatnoteapp@gmail.com>",
+      "icon": "build/icon.png",
+      "artifactName": "NeatNote-${version}-${arch}.${ext}",
+      "syncDesktopName": true
     },
     "nsis": {
       "oneClick": false,
@@ -96,5 +110,6 @@
       "artifactName": "NeatNote-Setup-${version}.${ext}",
       "include": "installer/win/custom-installer.nsh"
     }
-  }
+  },
+  "desktopName": "neatnote.desktop"
 }
